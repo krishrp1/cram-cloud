@@ -4,17 +4,19 @@ frontend/build/
 
 # Python
 backend/venv/
-backend/__pycache__/
-backend/*.pyc
+__pycache__/
+*.pyc
 
-# Environment variables
+# Environment Variables
 .env
 backend/.env
 frontend/.env
 
-# Mac
+# Uploaded Files
+backend/uploads/*
+
+# macOS
 .DS_Store
 
 # Logs
 *.log
-
