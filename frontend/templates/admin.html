@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+{% block title %}Admin Panel — NoteShare{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="admin-header">
+        <h1>⚙️ Admin Panel</h1>
+        <p>Manage notes and users</p>
+    </div>
+
+    <div class="admin-tabs">
+        <button class="tab-btn active" onclick="switchTab('upload')">📤 Upload PDF</button>
+        <button class="tab-btn" onclick="switchTab('pdfs')">📂 Manage PDFs</button>
+        <button class="tab-btn" onclick="switchTab('users')">👥 Manage Users</button>
+    </div>
+
+    <!-- Upload Tab -->
+    <div id="tab-upload" class="tab-content">
+        <div class="admin-card">
+            <h2>Upload New PDF</h2>
+            <div id="upload-error" class="alert alert-danger" style="display:none;"></div>
+            <div id="upload-success" class="alert alert-success" style="display:none;"></div>
+
+            <form id="upload-form" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" id="pdf-title" placeholder="e.g. Data Structures - Lecture 3" required>
+                </div>
+                <div class="form-group">
+                    <label>Semester</label>
+                    <select id="pdf-semester" required>
+                        <option value="">Select semester</option>
+                        <option value="Semester 1">Semester 1</option>
+                        <option value="Semester 2">Semester 2</option>
+                        <option value="Semester 3">Semester 3</option>
+                        <option value="Semester 4">Semester 4</option>
+                        <option value="Semester 5">Semester 5</option>
+                        <option value="Semester 6">Semester 6</option>
+                        <option value="Semester 7">Semester 7</option>
+                        <option value="Semester 8">Semester 8</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>PDF File</label>
+                    <div class="file-drop-zone" id="drop-zone">
+                        <input type="file" id="pdf-file" accept=".pdf" required style="display:none;">
+                        <div class="drop-zone-content" onclick="document.getElementById('pdf-file').click()">
+                            <div class="drop-icon">📄</div>
+                            <p>Click to select PDF or drag & drop</p>
+                            <span id="file-name" class="file-name-display"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="upload-progress" id="upload-progress" style="display:none;">
+                    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+                    <span id="progress-text">Uploading...</span>
+                </div>
+                <button type="submit" class="btn btn-primary" id="upload-btn">Upload PDF</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Manage PDFs Tab -->
+    <div id="tab-pdfs" class="tab-content" style="display:none;">
+        <div class="admin-card">
+            <div class="card-header-row">
+                <h2>All PDFs</h2>
+                <select id="filter-semester" onchange="loadAllPDFs()" class="filter-select">
+                    <option value="">All Semesters</option>
+                    <option value="Semester 1">Semester 1</option>
+                    <option value="Semester 2">Semester 2</option>
+                    <option value="Semester 3">Semester 3</option>
+                    <option value="Semester 4">Semester 4</option>
+                    <option value="Semester 5">Semester 5</option>
+                    <option value="Semester 6">Semester 6</option>
+                    <option value="Semester 7">Semester 7</option>
+                    <option value="Semester 8">Semester 8</option>
+                </select>
+            </div>
+            <div id="pdfs-table-container">
+                <div class="loading-spinner">Loading PDFs...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Users Tab -->
+    <div id="tab-users" class="tab-content" style="display:none;">
+        <div class="admin-card">
+            <h2>All Users</h2>
+            <div id="users-table-container">
+                <div class="loading-spinner">Loading users...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const API = 'http://localhost:5000/api';
+const token = localStorage.getItem('token');
+const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+
+if (!token || currentUser.role !== 'admin') window.location.href = '/dashboard';
+
+async function apiFetch(url, options = {}) {
+    const res = await fetch(API + url, {
+        ...options,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            ...options.headers
+        }
+    });
+    return res;
+}
+
+function switchTab(tab) {
+    document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById(`tab-${tab}`).style.display = 'block';
+    event.target.classList.add('active');
+
+    if (tab === 'pdfs') loadAllPDFs();
+    if (tab === 'users') loadAllUsers();
+}
+
+// File drop zone
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('pdf-file');
+const fileName = document.getElementById('file-name');
+
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type === 'application/pdf') {
+        fileInput.files = e.dataTransfer.files;
+        fileName.textContent = file.name;
+    }
+});
+fileInput.addEventListener('change', () => {
+    fileName.textContent = fileInput.files[0]?.name || '';
+});
+
+document.getElementById('upload-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errMsg = document.getElementById('upload-error');
+    const sucMsg = document.getElementById('upload-success');
+    errMsg.style.display = 'none';
+    sucMsg.style.display = 'none';
+
+    const title = document.getElementById('pdf-title').value.trim();
+    const semester = document.getElementById('pdf-semester').value;
+    const file = document.getElementById('pdf-file').files[0];
+
+    if (!title || !semester || !file) {
+        errMsg.textContent = 'All fields required.';
+        errMsg.style.display = 'block';
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('title', title);
+    formData.append('semester', semester);
+
+    document.getElementById('upload-progress').style.display = 'block';
+    document.getElementById('upload-btn').disabled = true;
+
+    try {
+        const res = await apiFetch('/pdf/', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            sucMsg.textContent = `"${title}" uploaded successfully!`;
+            sucMsg.style.display = 'block';
+            document.getElementById('upload-form').reset();
+            fileName.textContent = '';
+            document.getElementById('progress-fill').style.width = '100%';
+            document.getElementById('progress-text').textContent = 'Upload complete!';
+            setTimeout(() => {
+                document.getElementById('upload-progress').style.display = 'none';
+                document.getElementById('progress-fill').style.width = '0%';
+            }, 2000);
+        } else {
+            errMsg.textContent = data.error || 'Upload failed.';
+            errMsg.style.display = 'block';
+            document.getElementById('upload-progress').style.display = 'none';
+        }
+    } catch (err) {
+        errMsg.textContent = 'Network error. Try again.';
+        errMsg.style.display = 'block';
+        document.getElementById('upload-progress').style.display = 'none';
+    } finally {
+        document.getElementById('upload-btn').disabled = false;
+    }
+});
+
+async function loadAllPDFs() {
+    const container = document.getElementById('pdfs-table-container');
+    const semFilter = document.getElementById('filter-semester').value;
+    container.innerHTML = '<div class="loading-spinner">Loading...</div>';
+
+    try {
+        const url = semFilter ? `/pdf/?semester=${encodeURIComponent(semFilter)}` : '/pdf/all';
+        const res = await apiFetch(url);
+        const data = await res.json();
+        const pdfs = data.pdfs || [];
+
+        if (pdfs.length === 0) {
+            container.innerHTML = '<div class="empty-list">No PDFs found.</div>';
+            return;
+        }
+
+        container.innerHTML = `
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Semester</th>
+                        <th>Uploaded By</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${pdfs.map(p => `
+                        <tr>
+                            <td>${escapeHtml(p.title)}</td>
+                            <td><span class="semester-badge">${escapeHtml(p.semester)}</span></td>
+                            <td>${escapeHtml(p.uploadedBy)}</td>
+                            <td>${formatDate(p.uploadDate)}</td>
+                            <td>
+                                <button onclick="deletePDF(${p.id})" class="btn-danger-sm">Delete</button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    } catch (err) {
+        container.innerHTML = '<div class="error-msg">Failed to load PDFs.</div>';
+    }
+}
+
+async function deletePDF(pdfId) {
+    if (!confirm('Delete this PDF? This will also remove all its comments.')) return;
+
+    try {
+        const res = await apiFetch(`/pdf/${pdfId}`, { method: 'DELETE' });
+        if (res.ok) loadAllPDFs();
+    } catch (err) {
+        alert('Failed to delete PDF.');
+    }
+}
+
+async function loadAllUsers() {
+    const container = document.getElementById('users-table-container');
+    container.innerHTML = '<div class="loading-spinner">Loading...</div>';
+
+    try {
+        const res = await apiFetch('/auth/users');
+        const data = await res.json();
+        const users = data.users || [];
+
+        if (users.length === 0) {
+            container.innerHTML = '<div class="empty-list">No users found.</div>';
+            return;
+        }
+
+        container.innerHTML = `
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Semester</th>
+                        <th>Joined</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${users.map(u => `
+                        <tr>
+                            <td>${escapeHtml(u.email)}</td>
+                            <td><span class="nav-badge ${u.role}">${u.role}</span></td>
+                            <td>${escapeHtml(u.semester)}</td>
+                            <td>${formatDate(u.createdAt)}</td>
+                            <td>
+                                ${u.id !== currentUser.id ?
+                                    `<button onclick="deleteUser(${u.id})" class="btn-danger-sm">Delete</button>` :
+                                    '<span class="text-muted">You</span>'}
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    } catch (err) {
+        container.innerHTML = '<div class="error-msg">Failed to load users.</div>';
+    }
+}
+
+async function deleteUser(userId) {
+    if (!confirm('Delete this user? This cannot be undone.')) return;
+
+    try {
+        const res = await apiFetch(`/auth/users/${userId}`, { method: 'DELETE' });
+        if (res.ok) loadAllUsers();
+    } catch (err) {
+        alert('Failed to delete user.');
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text || '';
+    return div.innerHTML;
+}
+
+function formatDate(iso) {
+    if (!iso) return '';
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+</script>
+{% endblock %}

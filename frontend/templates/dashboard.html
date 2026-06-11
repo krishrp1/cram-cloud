@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div style="padding: 20px; max-width: 1200px; margin: 0 auto;">
+    <h1 style="color: #e8eaf6;">📚 Dashboard</h1>
+    <p style="color: #7b82a4;">Your course materials</p>
+    
+    <div style="display: flex; gap: 10px; margin: 20px 0; align-items: center;">
+        <label style="color: #7b82a4; font-weight: bold;">Filter by Semester:</label>
+        <select id="semester-filter" onchange="loadPDFs()" style="padding: 8px; background: #12151f; border: 1px solid #2a2d3e; color: #e8eaf6; border-radius: 6px; cursor: pointer;">
+            <option value="">All Semesters (Admin Only)</option>
+            <option value="Semester 1">Semester 1</option>
+            <option value="Semester 2">Semester 2</option>
+            <option value="Semester 3">Semester 3</option>
+            <option value="Semester 4">Semester 4</option>
+            <option value="Semester 5">Semester 5</option>
+            <option value="Semester 6">Semester 6</option>
+            <option value="Semester 7">Semester 7</option>
+            <option value="Semester 8">Semester 8</option>
+        </select>
+    </div>
+    
+    <div id="pdfs-list" style="margin-top: 20px;">
+        <p style="color: #7b82a4;">Loading notes...</p>
+    </div>
+</div>
+
+<script>
+if (!localStorage.getItem('token')) {
+    window.location.href = '/login';
+}
+
+const token = localStorage.getItem('token');
+const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+
+// Admin sees all semesters, student sees only their semester
+if (currentUser.role !== 'admin') {
+    document.getElementById('semester-filter').style.display = 'none';
+}
+
+async function loadPDFs() {
+    const token = localStorage.getItem('token');
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const semesterFilter = document.getElementById('semester-filter').value;
+    
+    try {
+        // If admin selected "All Semesters" or filter is empty, fetch all
+        let url = 'http://localhost:5000/api/pdf/';
+        if (semesterFilter) {
+            url += `?semester=${encodeURIComponent(semesterFilter)}`;
+        } else if (currentUser.role === 'admin') {
+            // Admin fetches all
+            url = 'http://localhost:5000/api/pdf/all';
+        } else {
+            // Student fetches only their semester
+            url += `?semester=${encodeURIComponent(currentUser.semester)}`;
+        }
+        
+        const res = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        console.log('PDFs:', data);
+        const list = document.getElementById('pdfs-list');
+        
+        if (!data.pdfs || data.pdfs.length === 0) {
+            list.innerHTML = '<p style="color: #7b82a4;">No notes available.</p>';
+            return;
+        }
+        
+        list.innerHTML = data.pdfs.map(pdf => `
+            <div style="padding: 15px; background: #1a1d27; border: 1px solid #2a2d3e; border-radius: 6px; margin-bottom: 10px;">
+                <h3 style="color: #4f6ef7; margin: 0;">${pdf.title}</h3>
+                <p style="color: #7b82a4; margin: 5px 0;">📂 Semester: ${pdf.semester}</p>
+                <p style="color: #7b82a4; margin: 5px 0;">👤 By: ${pdf.uploadedBy}</p>
+                <p style="color: #7b82a4; margin: 5px 0;">📅 ${new Date(pdf.uploadDate).toLocaleDateString()}</p>
+                <a href="http://localhost:5000/api/pdf/file/${pdf.id}" target="_blank" style="color: #4f6ef7; text-decoration: none; font-weight: bold;">📥 View PDF</a>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('Error:', err);
+        document.getElementById('pdfs-list').innerHTML = '<p style="color: red;">Error: ' + err.message + '</p>';
+    }
+}
+
+loadPDFs();
+</script>
+{% endblock %}

@@ -1,0 +1,20 @@
+# Node
+frontend/node_modules/
+frontend/build/
+
+# Python
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+
+# Environment variables
+.env
+backend/.env
+frontend/.env
+
+# Mac
+.DS_Store
+
+# Logs
+*.log
+
