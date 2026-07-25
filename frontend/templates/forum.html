@@ -8,68 +8,55 @@
             <h1>🗨️ Community Forum</h1>
             <p>{{ session.user.semester }} discussions</p>
         </div>
-        <button class="btn btn-primary" onclick="toggleNewThread()">+ New Thread</button>
+        <button class="btn btn-primary" id="new-thread-toggle" aria-expanded="false" aria-controls="new-thread-form">+ New Thread</button>
     </div>
 
     <div id="new-thread-form" class="new-thread-form" style="display:none;">
         <h3>Create New Thread</h3>
         <form id="thread-form">
             <div class="form-group">
-                <label>Title</label>
+                <label for="thread-title">Title</label>
                 <input type="text" id="thread-title" placeholder="Thread title..." required maxlength="255">
             </div>
             <div class="form-group">
-                <label>Content</label>
-                <textarea id="thread-content" placeholder="Write your post..." rows="5" required></textarea>
+                <label for="thread-content">Content</label>
+                <textarea id="thread-content" placeholder="Write your post..." rows="5" required maxlength="10000"></textarea>
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">Post Thread</button>
-                <button type="button" class="btn btn-secondary" onclick="toggleNewThread()">Cancel</button>
+                <button type="button" class="btn btn-secondary" id="new-thread-cancel">Cancel</button>
             </div>
         </form>
     </div>
 
     <div id="thread-list-view">
-        <div id="threads-container" class="threads-container">
+        <div id="threads-container" class="threads-container" role="list">
             <div class="loading-spinner">Loading threads...</div>
         </div>
         <div id="pagination" class="pagination"></div>
     </div>
 
     <div id="thread-detail-view" class="thread-detail-view" style="display:none;">
-        <button class="btn-back" onclick="backToList()">← Back to Forum</button>
+        <button class="btn-back" id="back-to-list">← Back to Forum</button>
         <div id="thread-detail-content"></div>
         <div class="replies-section">
             <h3>Replies</h3>
             <div id="replies-list"></div>
             <form id="reply-form" class="reply-form">
-                <textarea id="reply-text" placeholder="Write a reply..." rows="3" required></textarea>
+                <label for="reply-text" class="visually-hidden">Write a reply</label>
+                <textarea id="reply-text" placeholder="Write a reply..." rows="3" required maxlength="10000"></textarea>
                 <button type="submit" class="btn btn-primary">Reply</button>
             </form>
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
-const API = 'http://localhost:5000/api';
-const token = localStorage.getItem('token');
-const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+const currentUser = {{ session.user | tojson }};
 let currentPage = 1;
 let activeThreadId = null;
-
-if (!token) window.location.href = '/login';
-
-async function apiFetch(url, options = {}) {
-    const res = await fetch(API + url, {
-        ...options,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            ...options.headers
-        }
-    });
-    return res;
-}
 
 async function loadThreads(page = 1) {
     currentPage = page;
@@ -77,7 +64,8 @@ async function loadThreads(page = 1) {
     container.innerHTML = '<div class="loading-spinner">Loading threads...</div>';
 
     try {
-        const res = await apiFetch(`/forum/?page=${page}&per_page=10`);
+        const res = await apiFetch(`/api/forum/?page=${page}&per_page=10`);
+        if (!res) return;
         const data = await res.json();
         renderThreads(data.threads || [], data.pages, data.currentPage);
     } catch (err) {
@@ -85,16 +73,17 @@ async function loadThreads(page = 1) {
     }
 }
 
-function renderThreads(threads, totalPages, currentPage) {
+function renderThreads(threads, totalPages, page) {
     const container = document.getElementById('threads-container');
 
     if (threads.length === 0) {
         container.innerHTML = '<div class="empty-list">No threads yet. Start the conversation!</div>';
+        document.getElementById('pagination').innerHTML = '';
         return;
     }
 
     container.innerHTML = threads.map(t => `
-        <div class="thread-item" onclick="viewThread(${t.id})">
+        <div class="thread-item" role="listitem" tabindex="0" data-thread-id="${t.id}">
             <div class="thread-main">
                 <h3 class="thread-title">${escapeHtml(t.title)}</h3>
                 <p class="thread-preview">${escapeHtml(t.content.substring(0, 150))}${t.content.length > 150 ? '...' : ''}</p>
@@ -107,7 +96,13 @@ function renderThreads(threads, totalPages, currentPage) {
         </div>
     `).join('');
 
-    renderPagination(totalPages, currentPage);
+    container.querySelectorAll('.thread-item').forEach(el => {
+        const id = Number(el.dataset.threadId);
+        el.addEventListener('click', () => viewThread(id));
+        el.addEventListener('keydown', (e) => { if (e.key === 'Enter') viewThread(id); });
+    });
+
+    renderPagination(totalPages, page);
 }
 
 function renderPagination(totalPages, current) {
@@ -115,10 +110,13 @@ function renderPagination(totalPages, current) {
     if (totalPages <= 1) { pag.innerHTML = ''; return; }
 
     let html = '';
-    if (current > 1) html += `<button onclick="loadThreads(${current - 1})" class="btn btn-secondary">← Prev</button>`;
+    if (current > 1) html += `<button data-page="${current - 1}" class="btn btn-secondary btn-sm page-btn">← Prev</button>`;
     html += `<span class="page-info">Page ${current} of ${totalPages}</span>`;
-    if (current < totalPages) html += `<button onclick="loadThreads(${current + 1})" class="btn btn-secondary">Next →</button>`;
+    if (current < totalPages) html += `<button data-page="${current + 1}" class="btn btn-secondary btn-sm page-btn">Next →</button>`;
     pag.innerHTML = html;
+    pag.querySelectorAll('.page-btn').forEach(btn => {
+        btn.addEventListener('click', () => loadThreads(Number(btn.dataset.page)));
+    });
 }
 
 async function viewThread(threadId) {
@@ -127,7 +125,8 @@ async function viewThread(threadId) {
     document.getElementById('thread-detail-view').style.display = 'block';
 
     try {
-        const res = await apiFetch(`/forum/${threadId}`);
+        const res = await apiFetch(`/api/forum/${threadId}`);
+        if (!res) return;
         const data = await res.json();
         renderThreadDetail(data.thread, data.replies);
     } catch (err) {
@@ -144,12 +143,14 @@ function renderThreadDetail(thread, replies) {
                     <span>👤 ${escapeHtml(thread.userName)}</span>
                     <span>${formatDate(thread.createdAt)}</span>
                     ${(thread.userId === currentUser.id || currentUser.role === 'admin') ?
-                        `<button onclick="deleteThread(${thread.id})" class="btn-danger-sm">Delete Thread</button>` : ''}
+                        `<button id="delete-thread-btn" class="btn-danger-sm">Delete Thread</button>` : ''}
                 </div>
             </div>
             <div class="thread-full-body">${escapeHtml(thread.content)}</div>
         </div>
     `;
+    const deleteBtn = document.getElementById('delete-thread-btn');
+    if (deleteBtn) deleteBtn.addEventListener('click', () => deleteThread(thread.id));
 
     const repliesList = document.getElementById('replies-list');
     if (replies.length === 0) {
@@ -164,11 +165,21 @@ function renderThreadDetail(thread, replies) {
                 <div class="reply-content">${escapeHtml(r.content)}</div>
                 ${(r.userId === currentUser.id || currentUser.role === 'admin') ? `
                 <div class="reply-actions">
-                    ${r.userId === currentUser.id ? `<button onclick="editReply(${r.id}, '${escapeHtml(r.content).replace(/'/g, "\\'")}')">Edit</button>` : ''}
-                    <button onclick="deleteReply(${r.id})" class="btn-danger-sm">Delete</button>
+                    ${r.userId === currentUser.id ? `<button data-edit-reply="${r.id}">Edit</button>` : ''}
+                    <button data-delete-reply="${r.id}">Delete</button>
                 </div>` : ''}
             </div>
         `).join('');
+        repliesList.querySelectorAll('[data-edit-reply]').forEach(btn => {
+            btn.addEventListener('click', () => editReply(Number(btn.dataset.editReply), r_content(btn)));
+        });
+        repliesList.querySelectorAll('[data-delete-reply]').forEach(btn => {
+            btn.addEventListener('click', () => deleteReply(Number(btn.dataset.deleteReply)));
+        });
+    }
+
+    function r_content(btn) {
+        return btn.closest('.reply-item').querySelector('.reply-content').textContent;
     }
 }
 
@@ -178,19 +189,23 @@ document.getElementById('thread-form').addEventListener('submit', async (e) => {
     const content = document.getElementById('thread-content').value.trim();
     if (!title || !content) return;
 
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
     try {
-        const res = await apiFetch('/forum/', {
+        const res = await apiFetch('/api/forum/', {
             method: 'POST',
             body: JSON.stringify({ title, content })
         });
-        if (res.ok) {
+        if (res && res.ok) {
             document.getElementById('thread-title').value = '';
             document.getElementById('thread-content').value = '';
-            toggleNewThread();
+            toggleNewThread(false);
             loadThreads(1);
+        } else if (res) {
+            showFlash('Failed to create thread.', 'danger');
         }
-    } catch (err) {
-        alert('Failed to create thread.');
+    } finally {
+        submitBtn.disabled = false;
     }
 });
 
@@ -199,17 +214,21 @@ document.getElementById('reply-form').addEventListener('submit', async (e) => {
     const content = document.getElementById('reply-text').value.trim();
     if (!content || !activeThreadId) return;
 
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
     try {
-        const res = await apiFetch(`/forum/${activeThreadId}/reply`, {
+        const res = await apiFetch(`/api/forum/${activeThreadId}/reply`, {
             method: 'POST',
             body: JSON.stringify({ content })
         });
-        if (res.ok) {
+        if (res && res.ok) {
             document.getElementById('reply-text').value = '';
             viewThread(activeThreadId);
+        } else if (res) {
+            showFlash('Failed to post reply.', 'danger');
         }
-    } catch (err) {
-        alert('Failed to post reply.');
+    } finally {
+        submitBtn.disabled = false;
     }
 });
 
@@ -217,35 +236,26 @@ async function editReply(replyId, currentContent) {
     const newContent = prompt('Edit reply:', currentContent);
     if (!newContent || newContent.trim() === currentContent) return;
 
-    try {
-        const res = await apiFetch(`/forum/reply/${replyId}`, {
-            method: 'PUT',
-            body: JSON.stringify({ content: newContent.trim() })
-        });
-        if (res.ok) viewThread(activeThreadId);
-    } catch (err) {
-        alert('Failed to edit reply.');
-    }
+    const res = await apiFetch(`/api/forum/reply/${replyId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ content: newContent.trim() })
+    });
+    if (res && res.ok) viewThread(activeThreadId);
+    else if (res) showFlash('Failed to edit reply.', 'danger');
 }
 
 async function deleteReply(replyId) {
     if (!confirm('Delete this reply?')) return;
-    try {
-        const res = await apiFetch(`/forum/reply/${replyId}`, { method: 'DELETE' });
-        if (res.ok) viewThread(activeThreadId);
-    } catch (err) {
-        alert('Failed to delete reply.');
-    }
+    const res = await apiFetch(`/api/forum/reply/${replyId}`, { method: 'DELETE' });
+    if (res && res.ok) viewThread(activeThreadId);
+    else if (res) showFlash('Failed to delete reply.', 'danger');
 }
 
 async function deleteThread(threadId) {
     if (!confirm('Delete this thread and all its replies?')) return;
-    try {
-        const res = await apiFetch(`/forum/${threadId}`, { method: 'DELETE' });
-        if (res.ok) backToList();
-    } catch (err) {
-        alert('Failed to delete thread.');
-    }
+    const res = await apiFetch(`/api/forum/${threadId}`, { method: 'DELETE' });
+    if (res && res.ok) backToList();
+    else if (res) showFlash('Failed to delete thread.', 'danger');
 }
 
 function backToList() {
@@ -255,21 +265,18 @@ function backToList() {
     loadThreads(currentPage);
 }
 
-function toggleNewThread() {
+function toggleNewThread(force) {
     const form = document.getElementById('new-thread-form');
-    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    const toggleBtn = document.getElementById('new-thread-toggle');
+    const show = force !== undefined ? force : form.style.display === 'none';
+    form.style.display = show ? 'block' : 'none';
+    toggleBtn.setAttribute('aria-expanded', String(show));
+    if (show) document.getElementById('thread-title').focus();
 }
 
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text || '';
-    return div.innerHTML;
-}
-
-function formatDate(iso) {
-    if (!iso) return '';
-    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
+document.getElementById('new-thread-toggle').addEventListener('click', () => toggleNewThread());
+document.getElementById('new-thread-cancel').addEventListener('click', () => toggleNewThread(false));
+document.getElementById('back-to-list').addEventListener('click', backToList);
 
 loadThreads();
 </script>

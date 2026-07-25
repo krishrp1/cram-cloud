@@ -1,46 +1,50 @@
 {% extends "base.html" %}
-{% block title %}Login{% endblock %}
+{% block title %}Login — NoteShare{% endblock %}
 
 {% block content %}
-<div style="max-width: 400px; margin: 50px auto; padding: 20px; background: #1a1d27; border: 1px solid #2a2d3e; border-radius: 10px;">
-    <h2 style="text-align: center; color: #e8eaf6;">Login</h2>
-    
-    <div id="error-msg" style="color: red; display: none; margin-bottom: 10px;"></div>
-    
-    <form id="login-form">
-        <div style="margin-bottom: 15px;">
-            <label style="display: block; margin-bottom: 5px; color: #7b82a4;">Email</label>
-            <input type="email" id="email" placeholder="your@email.com" required 
-                   style="width: 100%; padding: 10px; background: #12151f; border: 1px solid #2a2d3e; color: #e8eaf6; border-radius: 6px;">
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <div class="auth-logo" aria-hidden="true">📚</div>
+            <h1 class="auth-title">Welcome back</h1>
+            <p class="auth-subtitle">Sign in to access your course notes</p>
         </div>
-        
-        <div style="margin-bottom: 15px;">
-            <label style="display: block; margin-bottom: 5px; color: #7b82a4;">Password</label>
-            <input type="password" id="password" placeholder="••••••••" required 
-                   style="width: 100%; padding: 10px; background: #12151f; border: 1px solid #2a2d3e; color: #e8eaf6; border-radius: 6px;">
-        </div>
-        
-        <button type="submit" style="width: 100%; padding: 10px; background: #4f6ef7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
-            Sign In
-        </button>
-    </form>
-    
-    <p style="text-align: center; margin-top: 15px; color: #7b82a4;">
-        No account? <a href="/register" style="color: #4f6ef7; text-decoration: none;">Register</a>
-    </p>
-</div>
 
+        <div id="error-msg" class="alert alert-danger" role="alert" style="display: none;"></div>
+
+        <form id="login-form" novalidate>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" placeholder="your@email.com" required autocomplete="email">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-full" id="login-btn">Sign In</button>
+        </form>
+
+        <p class="auth-switch">No account? <a href="/register">Register</a></p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script>
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const errMsg = document.getElementById('error-msg');
+    const btn = document.getElementById('login-btn');
     errMsg.style.display = 'none';
-    
+    btn.disabled = true;
+
     const data = {
-        email: document.getElementById('email').value,
+        email: document.getElementById('email').value.trim(),
         password: document.getElementById('password').value
     };
-    
+
     try {
         const res = await fetch('/api/login', {
             method: 'POST',
@@ -49,16 +53,16 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         });
         const result = await res.json();
         if (res.ok) {
-            localStorage.setItem('token', result.token);
-            localStorage.setItem('user', JSON.stringify(result.user));
             window.location.href = '/dashboard';
         } else {
             errMsg.textContent = result.error || 'Login failed';
             errMsg.style.display = 'block';
+            btn.disabled = false;
         }
     } catch (err) {
-        errMsg.textContent = 'Error: ' + err.message;
+        errMsg.textContent = 'Network error. Please try again.';
         errMsg.style.display = 'block';
+        btn.disabled = false;
     }
 });
 </script>

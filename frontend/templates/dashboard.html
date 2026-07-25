@@ -1,87 +1,170 @@
 {% extends "base.html" %}
-{% block title %}Dashboard{% endblock %}
+{% block title %}Dashboard — NoteShare{% endblock %}
 
 {% block content %}
-<div style="padding: 20px; max-width: 1200px; margin: 0 auto;">
-    <h1 style="color: #e8eaf6;">📚 Dashboard</h1>
-    <p style="color: #7b82a4;">Your course materials</p>
-    
-    <div style="display: flex; gap: 10px; margin: 20px 0; align-items: center;">
-        <label style="color: #7b82a4; font-weight: bold;">Filter by Semester:</label>
-        <select id="semester-filter" onchange="loadPDFs()" style="padding: 8px; background: #12151f; border: 1px solid #2a2d3e; color: #e8eaf6; border-radius: 6px; cursor: pointer;">
-            <option value="">All Semesters (Admin Only)</option>
-            <option value="Semester 1">Semester 1</option>
-            <option value="Semester 2">Semester 2</option>
-            <option value="Semester 3">Semester 3</option>
-            <option value="Semester 4">Semester 4</option>
-            <option value="Semester 5">Semester 5</option>
-            <option value="Semester 6">Semester 6</option>
-            <option value="Semester 7">Semester 7</option>
-            <option value="Semester 8">Semester 8</option>
-        </select>
-    </div>
-    
-    <div id="pdfs-list" style="margin-top: 20px;">
-        <p style="color: #7b82a4;">Loading notes...</p>
+<div class="dashboard-container">
+    <aside class="dashboard-sidebar" aria-label="Notes list">
+        <div class="sidebar-header">📚 Course Notes</div>
+
+        <div class="sidebar-search">
+            <label for="pdf-search" class="visually-hidden">Search notes by title</label>
+            <input type="search" id="pdf-search" placeholder="Search notes...">
+        </div>
+
+        {% if session.user.role == 'admin' %}
+        <div class="sidebar-filter">
+            <label for="semester-filter" class="visually-hidden">Filter by semester</label>
+            <select id="semester-filter">
+                <option value="">All Semesters</option>
+                {% for s in semesters %}
+                <option value="{{ s }}">{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
+        <div id="pdf-list" class="pdf-list" role="list">
+            <div class="loading-spinner">Loading notes...</div>
+        </div>
+    </aside>
+
+    <div class="dashboard-main">
+        <div id="dashboard-main-content" class="dashboard-empty-state">
+            <div class="drop-icon" aria-hidden="true">📄</div>
+            <p>Select a note from the list to preview it here.</p>
+        </div>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
-if (!localStorage.getItem('token')) {
-    window.location.href = '/login';
-}
-
-const token = localStorage.getItem('token');
-const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-
-// Admin sees all semesters, student sees only their semester
-if (currentUser.role !== 'admin') {
-    document.getElementById('semester-filter').style.display = 'none';
-}
+const isAdmin = {{ 'true' if session.user.role == 'admin' else 'false' }};
+let allPdfs = [];
+let activePdfId = null;
 
 async function loadPDFs() {
-    const token = localStorage.getItem('token');
-    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-    const semesterFilter = document.getElementById('semester-filter').value;
-    
+    const listEl = document.getElementById('pdf-list');
+    const semesterFilter = isAdmin ? document.getElementById('semester-filter').value : '';
+
     try {
-        // If admin selected "All Semesters" or filter is empty, fetch all
-        let url = 'http://localhost:5000/api/pdf/';
-        if (semesterFilter) {
-            url += `?semester=${encodeURIComponent(semesterFilter)}`;
-        } else if (currentUser.role === 'admin') {
-            // Admin fetches all
-            url = 'http://localhost:5000/api/pdf/all';
-        } else {
-            // Student fetches only their semester
-            url += `?semester=${encodeURIComponent(currentUser.semester)}`;
-        }
-        
-        const res = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const url = (isAdmin && !semesterFilter) ? '/api/pdf/all' :
+            '/api/pdf/' + (semesterFilter ? `?semester=${encodeURIComponent(semesterFilter)}` : '');
+        const res = await apiFetch(url);
+        if (!res) return;
         const data = await res.json();
-        console.log('PDFs:', data);
-        const list = document.getElementById('pdfs-list');
-        
-        if (!data.pdfs || data.pdfs.length === 0) {
-            list.innerHTML = '<p style="color: #7b82a4;">No notes available.</p>';
+        allPdfs = data.pdfs || [];
+        renderPdfList(allPdfs);
+    } catch (err) {
+        listEl.innerHTML = '<div class="error-msg">Failed to load notes.</div>';
+    }
+}
+
+function renderPdfList(pdfs) {
+    const listEl = document.getElementById('pdf-list');
+    const query = document.getElementById('pdf-search').value.trim().toLowerCase();
+    const filtered = query ? pdfs.filter(p => p.title.toLowerCase().includes(query)) : pdfs;
+
+    if (filtered.length === 0) {
+        listEl.innerHTML = `<div class="empty-list">${query ? 'No notes match your search.' : 'No notes available yet.'}</div>`;
+        return;
+    }
+
+    listEl.innerHTML = filtered.map(pdf => `
+        <div class="pdf-item ${pdf.id === activePdfId ? 'active' : ''}" role="listitem" tabindex="0"
+             data-pdf-id="${pdf.id}" onclick="selectPdf(${pdf.id})" onkeydown="if(event.key==='Enter')selectPdf(${pdf.id})">
+            <div class="pdf-item-title">${escapeHtml(pdf.title)}</div>
+            <div class="pdf-item-meta">${escapeHtml(pdf.semester)} · ${formatDate(pdf.uploadDate)}</div>
+        </div>
+    `).join('');
+}
+
+async function selectPdf(pdfId) {
+    activePdfId = pdfId;
+    renderPdfList(allPdfs);
+
+    const pdf = allPdfs.find(p => p.id === pdfId);
+    if (!pdf) return;
+
+    const main = document.getElementById('dashboard-main-content');
+    main.className = '';
+    main.innerHTML = `
+        <div class="pdf-detail-header">
+            <div>
+                <h2>${escapeHtml(pdf.title)}</h2>
+                <div class="pdf-detail-meta">${escapeHtml(pdf.semester)} · Uploaded by ${escapeHtml(pdf.uploadedBy)} · ${formatDate(pdf.uploadDate)}</div>
+            </div>
+            <a href="/api/pdf/file/${pdf.id}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Open in new tab</a>
+        </div>
+        <div class="pdf-viewer-container">
+            <iframe class="pdf-iframe" src="/api/pdf/file/${pdf.id}" title="${escapeHtml(pdf.title)}"></iframe>
+        </div>
+        <div class="comments-section">
+            <h3>Comments</h3>
+            <div id="comments-list"><div class="loading-spinner">Loading comments...</div></div>
+        </div>
+        <form id="comment-form" class="comment-form">
+            <label for="comment-text" class="visually-hidden">Add a comment</label>
+            <textarea id="comment-text" placeholder="Add a comment..." required maxlength="2000"></textarea>
+            <button type="submit" class="btn btn-primary btn-sm">Post</button>
+        </form>
+    `;
+
+    document.getElementById('comment-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const textEl = document.getElementById('comment-text');
+        const text = textEl.value.trim();
+        if (!text) return;
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        try {
+            const res = await apiFetch(`/api/comments/${pdfId}`, {
+                method: 'POST',
+                body: JSON.stringify({ text })
+            });
+            if (res && res.ok) {
+                textEl.value = '';
+                loadComments(pdfId);
+            } else if (res) {
+                showFlash('Failed to post comment.', 'danger');
+            }
+        } finally {
+            submitBtn.disabled = false;
+        }
+    });
+
+    loadComments(pdfId);
+}
+
+async function loadComments(pdfId) {
+    const container = document.getElementById('comments-list');
+    if (!container) return;
+    try {
+        const res = await apiFetch(`/api/comments/${pdfId}`);
+        if (!res) return;
+        const data = await res.json();
+        const comments = data.comments || [];
+        if (comments.length === 0) {
+            container.innerHTML = '<div class="empty-list">No comments yet. Start the discussion!</div>';
             return;
         }
-        
-        list.innerHTML = data.pdfs.map(pdf => `
-            <div style="padding: 15px; background: #1a1d27; border: 1px solid #2a2d3e; border-radius: 6px; margin-bottom: 10px;">
-                <h3 style="color: #4f6ef7; margin: 0;">${pdf.title}</h3>
-                <p style="color: #7b82a4; margin: 5px 0;">📂 Semester: ${pdf.semester}</p>
-                <p style="color: #7b82a4; margin: 5px 0;">👤 By: ${pdf.uploadedBy}</p>
-                <p style="color: #7b82a4; margin: 5px 0;">📅 ${new Date(pdf.uploadDate).toLocaleDateString()}</p>
-                <a href="http://localhost:5000/api/pdf/file/${pdf.id}" target="_blank" style="color: #4f6ef7; text-decoration: none; font-weight: bold;">📥 View PDF</a>
+        container.innerHTML = comments.map(c => `
+            <div class="comment-item">
+                <div class="comment-header">
+                    <span class="comment-author">${escapeHtml(c.userName)}</span>
+                    <span class="comment-time">${timeAgo(c.createdAt)}</span>
+                </div>
+                <div class="comment-text">${escapeHtml(c.text)}</div>
             </div>
         `).join('');
     } catch (err) {
-        console.error('Error:', err);
-        document.getElementById('pdfs-list').innerHTML = '<p style="color: red;">Error: ' + err.message + '</p>';
+        container.innerHTML = '<div class="error-msg">Failed to load comments.</div>';
     }
+}
+
+document.getElementById('pdf-search').addEventListener('input', () => renderPdfList(allPdfs));
+if (isAdmin) {
+    document.getElementById('semester-filter').addEventListener('change', loadPDFs);
 }
 
 loadPDFs();

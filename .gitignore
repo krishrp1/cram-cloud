@@ -1,9 +1,12 @@
 # Node
 frontend/node_modules/
 frontend/build/
+backend/node_modules/
+backend/dist/
+backend/generated/
 
 # Python
-backend/venv/
+frontend/venv/
 __pycache__/
 *.pyc
 
@@ -14,6 +17,9 @@ frontend/.env
 
 # Uploaded Files
 backend/uploads/*
+
+# Vercel
+.vercel
 
 # macOS
 .DS_Store

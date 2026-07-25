@@ -1,55 +1,38 @@
 // ============================================================
 // NoteShare — main.js
-// Shared utilities, auth guards, token helpers
+// Shared utilities loaded once in <head>/before-content so every
+// page script (loaded via {% block scripts %}, after this file)
+// can reuse them instead of redefining its own copy.
+//
+// Auth is session-cookie based (see frontend/app.py) — there is no
+// client-side token to manage here. All API calls go through the
+// same-origin /api/* proxy, which attaches the bearer token
+// server-side.
 // ============================================================
-
-const API_BASE = 'http://localhost:5000/api';
-
-// ---- Token helpers ----
-
-function getToken() {
-  return localStorage.getItem('token');
-}
-
-function getUser() {
-  try {
-    return JSON.parse(localStorage.getItem('user') || 'null');
-  } catch {
-    return null;
-  }
-}
-
-function setAuth(token, user) {
-  localStorage.setItem('token', token);
-  localStorage.setItem('user', JSON.stringify(user));
-}
-
-function clearAuth() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-}
-
-function isLoggedIn() {
-  return !!getToken();
-}
 
 // ---- API fetch wrapper ----
 
-async function apiRequest(endpoint, options = {}) {
-  const token = getToken();
+async function apiFetch(endpoint, options = {}) {
+  const isFormData = options.body instanceof FormData;
   const headers = {
-    'Content-Type': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...options.headers
   };
 
-  const res = await fetch(API_BASE + endpoint, {
-    ...options,
-    headers
-  });
+  let res;
+  try {
+    res = await fetch(endpoint, { ...options, headers });
+  } catch (err) {
+    // Network down, DNS failure, request aborted, etc. Every caller in this
+    // app treats a null return the same way it treats a 401 (skip its own
+    // success handling), so centralizing the catch here means individual
+    // call sites don't each need their own try/catch to avoid an unhandled
+    // promise rejection.
+    showFlash('Network error. Check your connection and try again.', 'danger');
+    return null;
+  }
 
   if (res.status === 401) {
-    clearAuth();
     window.location.href = '/login';
     return null;
   }
@@ -84,83 +67,37 @@ function timeAgo(iso) {
 
 function escapeHtml(text) {
   const div = document.createElement('div');
-  div.textContent = String(text || '');
+  div.textContent = String(text ?? '');
   return div.innerHTML;
 }
 
 // ---- Flash messages ----
 
-function showFlash(message, type = 'success', duration = 3000) {
+function showFlash(message, type = 'success', duration = 4000) {
   const existing = document.querySelector('.flash-toast');
   if (existing) existing.remove();
 
   const toast = document.createElement('div');
   toast.className = `flash-toast alert alert-${type}`;
+  toast.setAttribute('role', 'status');
+  toast.setAttribute('aria-live', 'polite');
   toast.textContent = message;
-  toast.style.cssText = `
-    position: fixed;
-    top: 80px;
-    right: 24px;
-    z-index: 9999;
-    min-width: 280px;
-    animation: slideIn 0.3s ease;
-  `;
 
   document.body.appendChild(toast);
   setTimeout(() => {
-    toast.style.animation = 'slideOut 0.3s ease';
+    toast.classList.add('flash-toast-out');
     setTimeout(() => toast.remove(), 300);
   }, duration);
 }
 
-// ---- Route guards ----
-
-function requireAuth() {
-  if (!isLoggedIn()) {
-    window.location.href = '/login';
-    return false;
-  }
-  return true;
-}
-
-function requireAdmin() {
-  const user = getUser();
-  if (!user || user.role !== 'admin') {
-    window.location.href = '/dashboard';
-    return false;
-  }
-  return true;
-}
-
-// ---- Init: redirect if not logged in (for protected pages) ----
+// ---- Nav active-link highlighting ----
 
 document.addEventListener('DOMContentLoaded', () => {
-  const publicPaths = ['/login', '/register'];
   const currentPath = window.location.pathname;
-
-  if (!publicPaths.includes(currentPath) && !isLoggedIn()) {
-    window.location.href = '/login';
-    return;
-  }
-
-  // Highlight active nav link
   document.querySelectorAll('.nav-link').forEach(link => {
     if (link.getAttribute('href') === currentPath) {
       link.classList.add('active');
+      link.setAttribute('aria-current', 'page');
     }
   });
 });
-
-// ---- CSS animations for toast ----
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes slideIn {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-  }
-  @keyframes slideOut {
-    from { transform: translateX(0); opacity: 1; }
-    to { transform: translateX(100%); opacity: 0; }
-  }
-`;
-document.head.appendChild(style);

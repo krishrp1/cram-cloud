@@ -8,45 +8,39 @@
         <p>Manage notes and users</p>
     </div>
 
-    <div class="admin-tabs">
-        <button class="tab-btn active" onclick="switchTab('upload')">📤 Upload PDF</button>
-        <button class="tab-btn" onclick="switchTab('pdfs')">📂 Manage PDFs</button>
-        <button class="tab-btn" onclick="switchTab('users')">👥 Manage Users</button>
+    <div class="admin-tabs" role="tablist">
+        <button class="tab-btn active" role="tab" aria-selected="true" data-tab="upload">📤 Upload PDF</button>
+        <button class="tab-btn" role="tab" aria-selected="false" data-tab="pdfs">📂 Manage PDFs</button>
+        <button class="tab-btn" role="tab" aria-selected="false" data-tab="users">👥 Manage Users</button>
     </div>
 
-    <!-- Upload Tab -->
-    <div id="tab-upload" class="tab-content">
+    <div id="tab-upload" class="tab-content" role="tabpanel">
         <div class="admin-card">
             <h2>Upload New PDF</h2>
-            <div id="upload-error" class="alert alert-danger" style="display:none;"></div>
-            <div id="upload-success" class="alert alert-success" style="display:none;"></div>
+            <div id="upload-error" class="alert alert-danger" role="alert" style="display:none;"></div>
+            <div id="upload-success" class="alert alert-success" role="status" style="display:none;"></div>
 
             <form id="upload-form" enctype="multipart/form-data">
                 <div class="form-group">
-                    <label>Title</label>
-                    <input type="text" id="pdf-title" placeholder="e.g. Data Structures - Lecture 3" required>
+                    <label for="pdf-title">Title</label>
+                    <input type="text" id="pdf-title" placeholder="e.g. Data Structures - Lecture 3" required maxlength="255">
                 </div>
                 <div class="form-group">
-                    <label>Semester</label>
+                    <label for="pdf-semester">Semester</label>
                     <select id="pdf-semester" required>
                         <option value="">Select semester</option>
-                        <option value="Semester 1">Semester 1</option>
-                        <option value="Semester 2">Semester 2</option>
-                        <option value="Semester 3">Semester 3</option>
-                        <option value="Semester 4">Semester 4</option>
-                        <option value="Semester 5">Semester 5</option>
-                        <option value="Semester 6">Semester 6</option>
-                        <option value="Semester 7">Semester 7</option>
-                        <option value="Semester 8">Semester 8</option>
+                        {% for s in semesters %}
+                        <option value="{{ s }}">{{ s }}</option>
+                        {% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>PDF File</label>
+                    <label for="pdf-file">PDF File</label>
                     <div class="file-drop-zone" id="drop-zone">
-                        <input type="file" id="pdf-file" accept=".pdf" required style="display:none;">
-                        <div class="drop-zone-content" onclick="document.getElementById('pdf-file').click()">
-                            <div class="drop-icon">📄</div>
-                            <p>Click to select PDF or drag & drop</p>
+                        <input type="file" id="pdf-file" accept=".pdf,application/pdf" required style="display:none;">
+                        <div class="drop-zone-content" id="drop-zone-trigger" role="button" tabindex="0" aria-label="Click to select a PDF file, or drag and drop">
+                            <div class="drop-icon" aria-hidden="true">📄</div>
+                            <p>Click to select PDF or drag &amp; drop</p>
                             <span id="file-name" class="file-name-display"></span>
                         </div>
                     </div>
@@ -60,22 +54,19 @@
         </div>
     </div>
 
-    <!-- Manage PDFs Tab -->
-    <div id="tab-pdfs" class="tab-content" style="display:none;">
+    <div id="tab-pdfs" class="tab-content" role="tabpanel" style="display:none;">
         <div class="admin-card">
             <div class="card-header-row">
                 <h2>All PDFs</h2>
-                <select id="filter-semester" onchange="loadAllPDFs()" class="filter-select">
-                    <option value="">All Semesters</option>
-                    <option value="Semester 1">Semester 1</option>
-                    <option value="Semester 2">Semester 2</option>
-                    <option value="Semester 3">Semester 3</option>
-                    <option value="Semester 4">Semester 4</option>
-                    <option value="Semester 5">Semester 5</option>
-                    <option value="Semester 6">Semester 6</option>
-                    <option value="Semester 7">Semester 7</option>
-                    <option value="Semester 8">Semester 8</option>
-                </select>
+                <div>
+                    <label for="filter-semester" class="visually-hidden">Filter by semester</label>
+                    <select id="filter-semester" class="filter-select">
+                        <option value="">All Semesters</option>
+                        {% for s in semesters %}
+                        <option value="{{ s }}">{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
             <div id="pdfs-table-container">
                 <div class="loading-spinner">Loading PDFs...</div>
@@ -83,8 +74,7 @@
         </div>
     </div>
 
-    <!-- Manage Users Tab -->
-    <div id="tab-users" class="tab-content" style="display:none;">
+    <div id="tab-users" class="tab-content" role="tabpanel" style="display:none;">
         <div class="admin-card">
             <h2>All Users</h2>
             <div id="users-table-container">
@@ -93,40 +83,37 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
-const API = 'http://localhost:5000/api';
-const token = localStorage.getItem('token');
-const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-
-if (!token || currentUser.role !== 'admin') window.location.href = '/dashboard';
-
-async function apiFetch(url, options = {}) {
-    const res = await fetch(API + url, {
-        ...options,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            ...options.headers
-        }
-    });
-    return res;
-}
+const currentUser = {{ session.user | tojson }};
 
 function switchTab(tab) {
     document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
-    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => {
+        const active = el.dataset.tab === tab;
+        el.classList.toggle('active', active);
+        el.setAttribute('aria-selected', String(active));
+    });
     document.getElementById(`tab-${tab}`).style.display = 'block';
-    event.target.classList.add('active');
 
     if (tab === 'pdfs') loadAllPDFs();
     if (tab === 'users') loadAllUsers();
 }
 
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
 // File drop zone
 const dropZone = document.getElementById('drop-zone');
+const dropZoneTrigger = document.getElementById('drop-zone-trigger');
 const fileInput = document.getElementById('pdf-file');
 const fileName = document.getElementById('file-name');
 
+dropZoneTrigger.addEventListener('click', () => fileInput.click());
+dropZoneTrigger.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } });
 dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
 dropZone.addEventListener('drop', (e) => {
@@ -168,10 +155,8 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
     document.getElementById('upload-btn').disabled = true;
 
     try {
-        const res = await apiFetch('/pdf/', {
-            method: 'POST',
-            body: formData
-        });
+        const res = await apiFetch('/api/pdf/', { method: 'POST', body: formData });
+        if (!res) return;
         const data = await res.json();
 
         if (res.ok) {
@@ -205,8 +190,9 @@ async function loadAllPDFs() {
     container.innerHTML = '<div class="loading-spinner">Loading...</div>';
 
     try {
-        const url = semFilter ? `/pdf/?semester=${encodeURIComponent(semFilter)}` : '/pdf/all';
+        const url = semFilter ? `/api/pdf/?semester=${encodeURIComponent(semFilter)}` : '/api/pdf/all';
         const res = await apiFetch(url);
+        if (!res) return;
         const data = await res.json();
         const pdfs = data.pdfs || [];
 
@@ -216,6 +202,7 @@ async function loadAllPDFs() {
         }
 
         container.innerHTML = `
+            <div style="overflow-x:auto;">
             <table class="admin-table">
                 <thead>
                     <tr>
@@ -233,28 +220,27 @@ async function loadAllPDFs() {
                             <td><span class="semester-badge">${escapeHtml(p.semester)}</span></td>
                             <td>${escapeHtml(p.uploadedBy)}</td>
                             <td>${formatDate(p.uploadDate)}</td>
-                            <td>
-                                <button onclick="deletePDF(${p.id})" class="btn-danger-sm">Delete</button>
-                            </td>
+                            <td><button data-delete-pdf="${p.id}" class="btn-danger-sm">Delete</button></td>
                         </tr>
                     `).join('')}
                 </tbody>
             </table>
+            </div>
         `;
+        container.querySelectorAll('[data-delete-pdf]').forEach(btn => {
+            btn.addEventListener('click', () => deletePDF(Number(btn.dataset.deletePdf)));
+        });
     } catch (err) {
         container.innerHTML = '<div class="error-msg">Failed to load PDFs.</div>';
     }
 }
+document.getElementById('filter-semester').addEventListener('change', loadAllPDFs);
 
 async function deletePDF(pdfId) {
     if (!confirm('Delete this PDF? This will also remove all its comments.')) return;
-
-    try {
-        const res = await apiFetch(`/pdf/${pdfId}`, { method: 'DELETE' });
-        if (res.ok) loadAllPDFs();
-    } catch (err) {
-        alert('Failed to delete PDF.');
-    }
+    const res = await apiFetch(`/api/pdf/${pdfId}`, { method: 'DELETE' });
+    if (res && res.ok) loadAllPDFs();
+    else if (res) showFlash('Failed to delete PDF.', 'danger');
 }
 
 async function loadAllUsers() {
@@ -262,7 +248,8 @@ async function loadAllUsers() {
     container.innerHTML = '<div class="loading-spinner">Loading...</div>';
 
     try {
-        const res = await apiFetch('/auth/users');
+        const res = await apiFetch('/api/auth/users');
+        if (!res) return;
         const data = await res.json();
         const users = data.users || [];
 
@@ -272,6 +259,7 @@ async function loadAllUsers() {
         }
 
         container.innerHTML = `
+            <div style="overflow-x:auto;">
             <table class="admin-table">
                 <thead>
                     <tr>
@@ -291,14 +279,18 @@ async function loadAllUsers() {
                             <td>${formatDate(u.createdAt)}</td>
                             <td>
                                 ${u.id !== currentUser.id ?
-                                    `<button onclick="deleteUser(${u.id})" class="btn-danger-sm">Delete</button>` :
+                                    `<button data-delete-user="${u.id}" class="btn-danger-sm">Delete</button>` :
                                     '<span class="text-muted">You</span>'}
                             </td>
                         </tr>
                     `).join('')}
                 </tbody>
             </table>
+            </div>
         `;
+        container.querySelectorAll('[data-delete-user]').forEach(btn => {
+            btn.addEventListener('click', () => deleteUser(Number(btn.dataset.deleteUser)));
+        });
     } catch (err) {
         container.innerHTML = '<div class="error-msg">Failed to load users.</div>';
     }
@@ -306,24 +298,13 @@ async function loadAllUsers() {
 
 async function deleteUser(userId) {
     if (!confirm('Delete this user? This cannot be undone.')) return;
-
-    try {
-        const res = await apiFetch(`/auth/users/${userId}`, { method: 'DELETE' });
-        if (res.ok) loadAllUsers();
-    } catch (err) {
-        alert('Failed to delete user.');
+    const res = await apiFetch(`/api/auth/users/${userId}`, { method: 'DELETE' });
+    if (res && res.ok) {
+        loadAllUsers();
+    } else if (res) {
+        const data = await res.json();
+        showFlash(data.error || 'Failed to delete user.', 'danger');
     }
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text || '';
-    return div.innerHTML;
-}
-
-function formatDate(iso) {
-    if (!iso) return '';
-    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 </script>
 {% endblock %}

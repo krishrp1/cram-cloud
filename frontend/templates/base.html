@@ -10,18 +10,19 @@
     {% block head %}{% endblock %}
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to content</a>
     {% if session.get('user') %}
-    <nav class="navbar">
+    <nav class="navbar" aria-label="Main navigation">
         <div class="nav-brand">
-            <span class="nav-logo">📚</span>
+            <span class="nav-logo" aria-hidden="true">📚</span>
             <span class="nav-title">NoteShare</span>
-            <span class="nav-semester">{{ session.user.semester }}</span>
+            <span class="nav-semester visually-hidden">{{ session.user.semester }}</span>
         </div>
         <div class="nav-links">
-            <a href="/dashboard" class="nav-link {% if request.path == '/dashboard' %}active{% endif %}">Dashboard</a>
-            <a href="/forum" class="nav-link {% if request.path == '/forum' %}active{% endif %}">Forum</a>
+            <a href="/dashboard" class="nav-link {% if request.path == '/dashboard' %}active{% endif %}" {% if request.path == '/dashboard' %}aria-current="page"{% endif %}>Dashboard</a>
+            <a href="/forum" class="nav-link {% if request.path == '/forum' %}active{% endif %}" {% if request.path == '/forum' %}aria-current="page"{% endif %}>Forum</a>
             {% if session.user.role == 'admin' %}
-            <a href="/admin" class="nav-link {% if request.path == '/admin' %}active{% endif %}">Admin</a>
+            <a href="/admin" class="nav-link {% if request.path == '/admin' %}active{% endif %}" {% if request.path == '/admin' %}aria-current="page"{% endif %}>Admin</a>
             {% endif %}
         </div>
         <div class="nav-user">
@@ -32,11 +33,11 @@
     </nav>
     {% endif %}
 
-    <main class="main-content">
+    <main class="main-content" id="main-content">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                    <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
