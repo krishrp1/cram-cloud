@@ -1,72 +1,71 @@
 # NoteShare (Cram Cloud)
 
-A full-stack student notes sharing and discussion platform. A Node/Express
-JSON API backend and a Flask server-rendered frontend that proxies all API
-calls through a server-side session (the browser never sees the JWT).
+A full-stack student notes sharing and discussion platform, built as a
+single Next.js (App Router) application — one codebase, one Vercel
+deployment.
 
 ## Features
 
-- Email/password authentication (JWT, issued by the backend, never exposed to the browser)
+- Email/password authentication (JWT in an httpOnly cookie, verified server-side, never exposed to client JS)
 - Role-based access control (student / admin)
 - Semester-scoped PDF notes repository, with per-note comments
 - Community discussion forum (threads + replies)
-- Admin dashboard (upload/delete notes, manage users)
+- Admin panel (upload/delete notes, manage users)
 
 ## Tech Stack
 
-- **Backend**: Node.js, TypeScript, Express, Prisma, PyJWT-equivalent (`jsonwebtoken`), Supabase (Postgres)
-- **Frontend**: Flask, Jinja2 templates, vanilla JS, `requests` (server-side proxy to the backend)
+- Next.js 16 (App Router), React 19, TypeScript
+- Prisma 7 (`@prisma/adapter-pg`) against Supabase Postgres
+- Supabase Storage for PDF files (private bucket, access gated by the app)
+- `jose` for session JWTs, `bcryptjs` for password hashing, `zod` for validation
+- Tailwind v4 + shadcn/ui
 
-There is no frontend build step — the frontend is server-rendered HTML/CSS/JS
-served directly by Flask. The backend is plain Node/Express (no Next.js/React).
+Data access follows one pattern throughout: reads are plain async functions
+in `lib/data/*.ts` called directly from Server Components; writes are
+Server Actions in `lib/actions/*.ts`. The only Route Handler in the app is
+`app/api/pdf/[id]/file/route.ts`, which streams PDF bytes back from
+Supabase Storage — everything else is Server Components and Server
+Actions. `lib/auth/dal.ts` is the real authorization boundary (re-reads
+the user from the DB on every request); `proxy.ts` (Next 16's rename of
+`middleware.ts`) only does an optimistic redirect to avoid a flash of
+protected content.
 
 ## Local setup
 
-### 1. Backend (API, port 8000)
-
 ```bash
-cd backend
 npm install
-cp .env.example .env   # then fill in DATABASE_URL, DIRECT_URL and JWT_SECRET
-npx prisma migrate dev --name init   # creates the tables in Supabase
+cp .env.example .env.local   # fill in DATABASE_URL, DIRECT_URL, JWT_SECRET, SUPABASE_*
+npx prisma migrate dev       # creates the tables in Supabase, if not already applied
 npm run dev
 ```
 
-Requires a Supabase project. `DATABASE_URL` is the transaction-mode pooler
-(port 6543, `pgbouncer=true`) used at runtime; `DIRECT_URL` is the
-session-mode pooler (port 5432) used only by `prisma migrate`. Both come
-from the Supabase project's Connect dialog. For production, build once
-(`npm run build`) and run `npm start`, and use `npx prisma migrate deploy`
-instead of `migrate dev`.
-
-### 2. Frontend (port 3000)
-
-```bash
-cd frontend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env   # then fill in SECRET_KEY and BACKEND_URL
-python app.py
-```
-
-Then open http://localhost:3000.
+Requires a Supabase project (Postgres + Storage). `DATABASE_URL` is the
+transaction-mode pooler (port 6543, `pgbouncer=true`) used at runtime;
+`DIRECT_URL` is the session-mode pooler (port 5432) used only for
+migrations. Both come from the Supabase project's Connect dialog.
+`SUPABASE_SERVICE_ROLE_KEY` is the secret key (Project Settings → API
+Keys) — server-side only, never exposed to the client.
 
 ## Environment variables
 
-See `backend/.env.example` and `frontend/.env.example`. Neither `.env` file
-should ever be committed — both are gitignored. `JWT_SECRET` and `SECRET_KEY`
-must be long random values in any deployed environment; the app refuses to
-start without them.
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | Pooled Postgres connection (runtime) |
+| `DIRECT_URL` | Direct Postgres connection (migrations only) |
+| `JWT_SECRET` | Signs/verifies the session cookie |
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-side Supabase Storage access |
+| `SUPABASE_STORAGE_BUCKET` | Bucket PDFs are stored in (private) |
+
+`.env.local` is gitignored and must never be committed. `JWT_SECRET` must
+be a long random value in any deployed environment — the app throws on
+startup if it's missing.
 
 ## Production
 
-- Backend: `npm run build && npm start` (compiled Node, no dev-server reload).
-  Frontend: run behind a production WSGI server (`gunicorn`, included in
-  `frontend/requirements.txt`), not the Flask dev server.
-- Set `NODE_ENV=production` (backend) and `FLASK_ENV=production` (frontend).
-- Set `CORS_ORIGINS` (backend) to the frontend's real origin.
-- Serve both services over HTTPS — `SESSION_COOKIE_SECURE` is enabled
-  automatically when `FLASK_ENV=production`.
-- The admin role cannot be self-assigned via `/register`; promote a user to
-  admin directly in the database.
+- `npm run build && npm start`, or deploy to Vercel (zero-config — Next.js
+  is Vercel's own framework, no custom `vercel.json` needed).
+- Set the environment variables above in the deployment platform's
+  dashboard, not from a committed file.
+- The admin role cannot be self-assigned via `/register`; promote a user
+  to admin directly in the database.
