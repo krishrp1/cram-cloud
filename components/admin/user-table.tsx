@@ -1,34 +1,13 @@
 "use client";
 
-import { useTransition } from "react";
 import { deleteUserAction } from "@/lib/actions/users";
 import type { UserListItem } from "@/lib/data/users";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { ConfirmDeleteButton } from "@/components/ui/confirm-delete-button";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-function DeleteButton({ userId }: { userId: number }) {
-  const [pending, startTransition] = useTransition();
-  return (
-    <Button
-      type="button"
-      size="sm"
-      variant="destructive"
-      disabled={pending}
-      onClick={() => {
-        if (!confirm("Delete this user? This cannot be undone.")) return;
-        startTransition(() => {
-          deleteUserAction(String(userId));
-        });
-      }}
-    >
-      {pending ? "Deleting…" : "Delete"}
-    </Button>
-  );
 }
 
 export function UserTable({ users, currentUserId }: { users: UserListItem[]; currentUserId: number }) {
@@ -62,7 +41,10 @@ export function UserTable({ users, currentUserId }: { users: UserListItem[]; cur
               {u.id === currentUserId ? (
                 <span className="text-sm text-muted-foreground">You</span>
               ) : (
-                <DeleteButton userId={u.id} />
+                <ConfirmDeleteButton
+                  confirmText="Delete this user? This cannot be undone."
+                  action={() => deleteUserAction(String(u.id))}
+                />
               )}
             </TableCell>
           </TableRow>

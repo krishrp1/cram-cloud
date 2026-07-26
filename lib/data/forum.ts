@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/prisma";
 import { parseId } from "@/lib/parseId";
+import { canAccessSemester } from "@/lib/auth/dal";
 import type { User, ForumThread, ForumReply } from "@/generated/prisma/client";
 
 function threadToDict(t: ForumThread & { user: User; _count: { replies: number } }) {
@@ -62,16 +63,14 @@ export async function getThreadForUser(rawId: string, user: User) {
 
   const thread = await db.forumThread.findUnique({
     where: { id },
-    include: { user: true, _count: { select: { replies: true } } },
+    include: {
+      user: true,
+      _count: { select: { replies: true } },
+      replies: { include: { user: true }, orderBy: { createdAt: "asc" } },
+    },
   });
   if (!thread) return null;
-  if (user.role !== "admin" && user.semester !== thread.semester) return null;
+  if (!canAccessSemester(user, thread.semester)) return null;
 
-  const replies = await db.forumReply.findMany({
-    where: { threadId: id },
-    include: { user: true },
-    orderBy: { createdAt: "asc" },
-  });
-
-  return { thread: threadToDict(thread), replies: replies.map(replyToDict) };
+  return { thread: threadToDict(thread), replies: thread.replies.map(replyToDict) };
 }

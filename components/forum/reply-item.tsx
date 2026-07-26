@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useState } from "react";
 import { deleteReplyAction, editReplyAction } from "@/lib/actions/forum";
 import { IDLE_STATE } from "@/lib/action-state";
 import type { ReplyItem as ReplyItemType } from "@/lib/data/forum";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-button";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -22,7 +23,10 @@ export function ReplyItem({
   isAdmin: boolean;
 }) {
   const [editing, setEditing] = useState(false);
-  const [deletePending, startDeleteTransition] = useTransition();
+  const [deletePending, runDelete] = useConfirmDelete(
+    () => deleteReplyAction(String(reply.id)),
+    "Delete this reply?"
+  );
   const editAction = editReplyAction.bind(null, String(reply.id));
   const [state, formAction, editPending] = useActionState(editAction, IDLE_STATE);
 
@@ -75,12 +79,7 @@ export function ReplyItem({
                 <button
                   type="button"
                   disabled={deletePending}
-                  onClick={() => {
-                    if (!confirm("Delete this reply?")) return;
-                    startDeleteTransition(() => {
-                      deleteReplyAction(String(reply.id));
-                    });
-                  }}
+                  onClick={runDelete}
                   className="text-xs font-semibold text-muted-foreground hover:text-foreground hover:underline"
                 >
                   {deletePending ? "Deleting…" : "Delete"}

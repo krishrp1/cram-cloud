@@ -1,34 +1,13 @@
 "use client";
 
-import { useTransition } from "react";
 import { deletePdfAction } from "@/lib/actions/pdf";
 import type { PdfListItem } from "@/lib/data/pdfs";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { ConfirmDeleteButton } from "@/components/ui/confirm-delete-button";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-function DeleteButton({ pdfId }: { pdfId: number }) {
-  const [pending, startTransition] = useTransition();
-  return (
-    <Button
-      type="button"
-      size="sm"
-      variant="destructive"
-      disabled={pending}
-      onClick={() => {
-        if (!confirm("Delete this PDF? This will also remove all its comments.")) return;
-        startTransition(() => {
-          deletePdfAction(String(pdfId));
-        });
-      }}
-    >
-      {pending ? "Deleting…" : "Delete"}
-    </Button>
-  );
 }
 
 export function PdfTable({ pdfs }: { pdfs: PdfListItem[] }) {
@@ -57,7 +36,10 @@ export function PdfTable({ pdfs }: { pdfs: PdfListItem[] }) {
             <TableCell>{pdf.uploadedBy}</TableCell>
             <TableCell>{formatDate(pdf.uploadDate)}</TableCell>
             <TableCell>
-              <DeleteButton pdfId={pdf.id} />
+              <ConfirmDeleteButton
+                confirmText="Delete this PDF? Notes with existing comments can't be deleted until those comments are removed."
+                action={() => deletePdfAction(String(pdf.id))}
+              />
             </TableCell>
           </TableRow>
         ))}

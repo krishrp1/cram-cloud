@@ -6,7 +6,9 @@ import { requireAdmin } from "@/lib/auth/dal";
 import { db } from "@/lib/prisma";
 import { uploadPdf, deletePdf } from "@/lib/storage";
 import { parseId } from "@/lib/parseId";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { uploadPdfSchema } from "@/lib/validations/pdf";
+import { Prisma } from "@/generated/prisma/client";
 import type { ActionState } from "@/lib/action-state";
 
 const PDF_MAGIC = Buffer.from("%PDF-");
@@ -17,6 +19,10 @@ function secureFilename(filename: string) {
 
 export async function uploadPdfAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   const admin = await requireAdmin();
+
+  if (!checkRateLimit(`upload:${admin.id}`, 20, 60 * 60 * 1000)) {
+    return { status: "error", message: "Too many requests, please try again later" };
+  }
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
@@ -76,7 +82,23 @@ export async function deletePdfAction(rawId: string): Promise<ActionState> {
     // block removing the (bad) DB row.
     console.error("Failed to delete storage object for pdf", pdf.id, err);
   }
-  await db.pdf.delete({ where: { id: pdf.id } });
+
+  try {
+    await db.pdf.delete({ where: { id: pdf.id } });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      // P2003: comments still reference this pdf (no onDelete: Cascade on
+      // that relation) — was previously unhandled, threw straight through.
+      if (err.code === "P2003") {
+        return { status: "error", message: "Cannot delete: this note still has comments" };
+      }
+      // P2025: already deleted by a concurrent request/double-click.
+      if (err.code === "P2025") {
+        return { status: "error", message: "Already deleted" };
+      }
+    }
+    throw err;
+  }
 
   revalidatePath("/admin");
   revalidatePath("/dashboard");

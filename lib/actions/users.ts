@@ -21,8 +21,13 @@ export async function deleteUserAction(rawId: string): Promise<ActionState> {
   try {
     await db.user.delete({ where: { id } });
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
-      return { status: "error", message: "Cannot delete user: they still have notes, comments, or forum posts" };
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      if (err.code === "P2003") {
+        return { status: "error", message: "Cannot delete user: they still have notes, comments, or forum posts" };
+      }
+      if (err.code === "P2025") {
+        return { status: "error", message: "Already deleted" };
+      }
     }
     throw err;
   }
