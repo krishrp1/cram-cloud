@@ -31,12 +31,13 @@ export async function uploadPdfAction(_prevState: ActionState, formData: FormDat
 
   const parsed = uploadPdfSchema.safeParse({
     title: formData.get("title"),
+    branch: formData.get("branch"),
     semester: formData.get("semester"),
   });
   if (!parsed.success) {
     return { status: "error", message: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
-  const { title, semester } = parsed.data;
+  const { title, branch, semester } = parsed.data;
 
   if (!file.name || path.extname(file.name).toLowerCase() !== ".pdf") {
     return { status: "error", message: "PDF only" };
@@ -55,7 +56,7 @@ export async function uploadPdfAction(_prevState: ActionState, formData: FormDat
   await uploadPdf(filename, buffer);
 
   const created = await db.pdf.create({
-    data: { title, filename, semester, uploadedBy: admin.id, fileUrl: "" },
+    data: { title, filename, branch, semester, uploadedBy: admin.id, fileUrl: "" },
   });
   await db.pdf.update({
     where: { id: created.id },
@@ -63,6 +64,7 @@ export async function uploadPdfAction(_prevState: ActionState, formData: FormDat
   });
 
   revalidatePath("/admin");
+  revalidatePath(`/dashboard/${branch}/${encodeURIComponent(semester)}`);
   return { status: "success" };
 }
 
@@ -101,6 +103,6 @@ export async function deletePdfAction(rawId: string): Promise<ActionState> {
   }
 
   revalidatePath("/admin");
-  revalidatePath("/dashboard");
+  revalidatePath(`/dashboard/${pdf.branch}/${encodeURIComponent(pdf.semester)}`);
   return { status: "success" };
 }

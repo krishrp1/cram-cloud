@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser, canAccessSemester } from "@/lib/auth/dal";
+import { requireUser } from "@/lib/auth/dal";
 import { db } from "@/lib/prisma";
 import { parseId } from "@/lib/parseId";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -18,8 +18,10 @@ export async function postCommentAction(rawPdfId: string, _prevState: ActionStat
   const pdfId = parseId(rawPdfId);
   if (pdfId === null) return { status: "error", message: "Not found" };
 
+  // Notes are open-browse — any authenticated user who can view a pdf can
+  // comment on it, so the only gate here is that the pdf exists.
   const pdf = await db.pdf.findUnique({ where: { id: pdfId } });
-  if (!pdf || !canAccessSemester(user, pdf.semester)) {
+  if (!pdf) {
     return { status: "error", message: "Not found" };
   }
 
@@ -32,6 +34,6 @@ export async function postCommentAction(rawPdfId: string, _prevState: ActionStat
     data: { pdfId, userId: user.id, text: parsed.data.text },
   });
 
-  revalidatePath(`/dashboard/${pdfId}`);
+  revalidatePath(`/dashboard/${pdf.branch}/${encodeURIComponent(pdf.semester)}/${pdfId}`);
   return { status: "success" };
 }

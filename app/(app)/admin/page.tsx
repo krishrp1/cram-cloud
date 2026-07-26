@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/auth/dal";
-import { listPdfsForUser } from "@/lib/data/pdfs";
+import { listAllPdfs } from "@/lib/data/pdfs";
 import { listAllUsers } from "@/lib/data/users";
 import { AdminTabs } from "@/components/admin/admin-tabs";
 
@@ -7,7 +7,7 @@ export const metadata = { title: "Admin Panel — Cram Cloud" };
 
 export default async function AdminPage() {
   const admin = await requireAdmin();
-  const [pdfs, users] = await Promise.all([listPdfsForUser(admin), listAllUsers()]);
+  const [pdfs, users] = await Promise.all([listAllPdfs(), listAllUsers()]);
 
   return (
     <div className="mx-auto max-w-4xl p-6">

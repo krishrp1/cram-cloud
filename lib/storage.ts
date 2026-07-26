@@ -2,8 +2,8 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 
 // Service-role client: server-side only, bypasses bucket RLS. The bucket
-// itself is kept private — access control is enforced by the app (semester
-// scoping in lib/data/pdfs.ts and the file-serving route), not by the
+// itself is kept private — access control is enforced by the app (the
+// file-serving route requires an authenticated session), not by the
 // bucket's own policies, so this must never be exposed to the browser.
 const supabase = createClient(
   process.env.SUPABASE_URL as string,

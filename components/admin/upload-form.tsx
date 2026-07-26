@@ -3,11 +3,19 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { uploadPdfAction } from "@/lib/actions/pdf";
 import { IDLE_STATE } from "@/lib/action-state";
-import { SEMESTERS } from "@/lib/constants";
+import { SEMESTERS, DEPARTMENT_GROUPS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +60,27 @@ export function UploadForm() {
         <div className="flex flex-col gap-2">
           <Label htmlFor="pdf-title">Title</Label>
           <Input id="pdf-title" name="title" placeholder="e.g. Data Structures - Lecture 3" required maxLength={255} />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="pdf-branch">Branch</Label>
+          <Select name="branch" required>
+            <SelectTrigger id="pdf-branch" className="w-full">
+              <SelectValue placeholder="Select branch" />
+            </SelectTrigger>
+            <SelectContent>
+              {DEPARTMENT_GROUPS.map((dept) => (
+                <SelectGroup key={dept.name}>
+                  <SelectLabel>{dept.name}</SelectLabel>
+                  {dept.branches.map((branch) => (
+                    <SelectItem key={branch.value} value={branch.value}>
+                      {branch.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="flex flex-col gap-2">

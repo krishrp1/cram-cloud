@@ -1,6 +1,7 @@
 "use client";
 
 import { deletePdfAction } from "@/lib/actions/pdf";
+import { branchLabel } from "@/lib/constants";
 import type { PdfListItem } from "@/lib/data/pdfs";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ export function PdfTable({ pdfs }: { pdfs: PdfListItem[] }) {
       <TableHeader>
         <TableRow>
           <TableHead>Title</TableHead>
+          <TableHead>Branch</TableHead>
           <TableHead>Semester</TableHead>
           <TableHead>Uploaded By</TableHead>
           <TableHead>Date</TableHead>
@@ -30,6 +32,9 @@ export function PdfTable({ pdfs }: { pdfs: PdfListItem[] }) {
         {pdfs.map((pdf) => (
           <TableRow key={pdf.id}>
             <TableCell className="max-w-64 truncate">{pdf.title}</TableCell>
+            <TableCell>
+              <Badge variant="secondary">{branchLabel(pdf.branch)}</Badge>
+            </TableCell>
             <TableCell>
               <Badge variant="secondary">{pdf.semester}</Badge>
             </TableCell>

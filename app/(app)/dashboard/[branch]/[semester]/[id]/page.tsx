@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
-import { requireUser } from "@/lib/auth/dal";
-import { getPdfForUser } from "@/lib/data/pdfs";
+import { getPdfById } from "@/lib/data/pdfs";
 import { listCommentsForPdf } from "@/lib/data/comments";
 import { CommentSection } from "@/components/dashboard/comment-section";
 
@@ -8,11 +7,17 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-export default async function PdfDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const user = await requireUser();
-  const pdf = await getPdfForUser(id, user);
-  if (!pdf) notFound();
+export default async function PdfDetailPage({
+  params,
+}: {
+  params: Promise<{ branch: string; semester: string; id: string }>;
+}) {
+  const raw = await params;
+  // Route params arrive percent-encoded as-is in this Next.js version.
+  const branch = decodeURIComponent(raw.branch);
+  const semester = decodeURIComponent(raw.semester);
+  const pdf = await getPdfById(raw.id);
+  if (!pdf || pdf.branch !== branch || pdf.semester !== semester) notFound();
 
   const comments = await listCommentsForPdf(pdf.id);
   const fileUrl = `/api/pdf/${pdf.id}/file`;

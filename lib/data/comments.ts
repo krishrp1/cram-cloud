@@ -14,8 +14,8 @@ function commentToDict(c: Comment & { user: User }) {
 
 export type CommentItem = ReturnType<typeof commentToDict>;
 
-// Caller is responsible for having already authorized access to the
-// parent pdf (semester scoping) before calling this.
+// Caller is responsible for having already confirmed the parent pdf
+// exists before calling this.
 export async function listCommentsForPdf(pdfId: number): Promise<CommentItem[]> {
   const comments = await db.comment.findMany({
     where: { pdfId },
