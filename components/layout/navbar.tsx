@@ -26,7 +26,7 @@ export function Navbar({ user }: { user: NavUser }) {
         <span aria-hidden className="text-lg">
           📚
         </span>
-        <span className="font-heading text-sm font-semibold">NoteShare</span>
+        <span className="font-heading text-sm font-semibold">Cram Cloud</span>
       </div>
 
       <div className="flex items-center gap-1">

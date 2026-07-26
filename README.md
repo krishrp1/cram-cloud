@@ -1,4 +1,4 @@
-# NoteShare (Cram Cloud)
+# Cram Cloud
 
 A full-stack student notes sharing and discussion platform, built as a
 single Next.js (App Router) application — one codebase, one Vercel

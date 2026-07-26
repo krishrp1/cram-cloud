@@ -3,7 +3,7 @@ import { requireUser } from "@/lib/auth/dal";
 import { listThreadsForUser } from "@/lib/data/forum";
 import { NewThreadToggle } from "@/components/forum/new-thread-toggle";
 
-export const metadata = { title: "Forum — NoteShare" };
+export const metadata = { title: "Forum — Cram Cloud" };
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });

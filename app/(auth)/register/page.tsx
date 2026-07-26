@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { RegisterForm } from "@/components/auth/register-form";
 
-export const metadata = { title: "Register — NoteShare" };
+export const metadata = { title: "Register — Cram Cloud" };
 
 export default async function RegisterPage() {
   const user = await getCurrentUser();

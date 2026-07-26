@@ -7,7 +7,7 @@ const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   title: {
-    default: "NoteShare",
+    default: "Cram Cloud",
     template: "%s",
   },
   description: "Student notes sharing and discussion platform",

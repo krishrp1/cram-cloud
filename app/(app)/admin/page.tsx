@@ -3,7 +3,7 @@ import { listPdfsForUser } from "@/lib/data/pdfs";
 import { listAllUsers } from "@/lib/data/users";
 import { AdminTabs } from "@/components/admin/admin-tabs";
 
-export const metadata = { title: "Admin Panel — NoteShare" };
+export const metadata = { title: "Admin Panel — Cram Cloud" };
 
 export default async function AdminPage() {
   const admin = await requireAdmin();

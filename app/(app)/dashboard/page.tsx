@@ -1,4 +1,4 @@
-export const metadata = { title: "Dashboard — NoteShare" };
+export const metadata = { title: "Dashboard — Cram Cloud" };
 
 export default function DashboardEmptyState() {
   return (

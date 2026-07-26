@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { LoginForm } from "@/components/auth/login-form";
 
-export const metadata = { title: "Login — NoteShare" };
+export const metadata = { title: "Login — Cram Cloud" };
 
 export default async function LoginPage({
   searchParams,
