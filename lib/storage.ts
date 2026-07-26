@@ -21,10 +21,10 @@ export async function uploadPdf(key: string, buffer: Buffer): Promise<void> {
   if (error) throw error;
 }
 
-export async function downloadPdf(key: string): Promise<Buffer> {
-  const { data, error } = await bucket().download(key);
+export async function getSignedPdfUrl(key: string, expiresInSeconds = 60): Promise<string> {
+  const { data, error } = await bucket().createSignedUrl(key, expiresInSeconds);
   if (error) throw error;
-  return Buffer.from(await data.arrayBuffer());
+  return data.signedUrl;
 }
 
 export async function deletePdf(key: string): Promise<void> {

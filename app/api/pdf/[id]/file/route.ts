@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { getPdfRowForUser } from "@/lib/data/pdfs";
-import { downloadPdf } from "@/lib/storage";
+import { getSignedPdfUrl } from "@/lib/storage";
 
-// The one Route Handler in the app — binary PDF bytes can't come back from
-// a Server Component or Server Action. getPdfRowForUser() re-applies the
-// same semester-scoping check as everywhere else.
+// The one Route Handler in the app — getPdfRowForUser() re-applies the same
+// semester-scoping check as everywhere else, then we redirect to a short-lived
+// signed URL so large PDFs stream straight from storage instead of being
+// buffered through this function (which would blow the response size limit).
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
   if (!user) {
@@ -18,17 +19,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  let buffer: Buffer;
+  let signedUrl: string;
   try {
-    buffer = await downloadPdf(pdf.filename);
+    signedUrl = await getSignedPdfUrl(pdf.filename);
   } catch {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return new NextResponse(new Uint8Array(buffer), {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${pdf.filename}"`,
-    },
-  });
+  return NextResponse.redirect(signedUrl, { status: 302 });
 }
