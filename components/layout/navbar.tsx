@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { logoutAction } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { cn } from "@/lib/utils";
 
 type NavUser = {
@@ -67,6 +68,7 @@ export function Navbar({ user }: { user: NavUser }) {
         <Badge variant="secondary" className="uppercase">
           {user.role}
         </Badge>
+        <ThemeToggle />
         <form action={logoutAction}>
           <Button type="submit" variant="outline" size="sm">
             Logout
