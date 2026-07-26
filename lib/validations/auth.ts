@@ -6,6 +6,10 @@ import { SEMESTERS } from "@/lib/constants";
 // only add friction without adding real validation value. Matches the
 // original backend's EMAIL_RE exactly.
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+// Registration is restricted to this college's domain; login isn't
+// (existing accounts, if any predate this restriction, must still be able
+// to sign in — the domain check only gates who can create a new account).
+const ALLOWED_EMAIL_DOMAIN = "@bmsce.ac.in";
 const MAX_EMAIL_LENGTH = 254; // RFC 5321 4.5.3.1.3
 const MIN_PASSWORD_LENGTH = 8;
 // bcrypt only reads the first 72 bytes of its input — anything past that
@@ -20,6 +24,11 @@ const email = z
   .max(MAX_EMAIL_LENGTH, "Invalid email address")
   .regex(EMAIL_RE, "Invalid email address");
 
+const collegeEmail = email.refine(
+  (val) => val.endsWith(ALLOWED_EMAIL_DOMAIN),
+  `Registration is restricted to ${ALLOWED_EMAIL_DOMAIN} email addresses`
+);
+
 const semester = z.enum(SEMESTERS as [string, ...string[]], { error: "Invalid semester" });
 
 export const loginSchema = z.object({
@@ -28,7 +37,7 @@ export const loginSchema = z.object({
 });
 
 export const registerSchema = z.object({
-  email,
+  email: collegeEmail,
   password: z
     .string()
     .min(MIN_PASSWORD_LENGTH, `Password must be at least ${MIN_PASSWORD_LENGTH} characters`)

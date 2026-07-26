@@ -30,8 +30,17 @@ export function RegisterForm() {
         )}
         <form action={formAction} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" placeholder="your@email.com" autoComplete="email" required />
+            <Label htmlFor="email">College Email</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="yourname@bmsce.ac.in"
+              pattern=".+@bmsce\.ac\.in"
+              title="Must be a @bmsce.ac.in email address"
+              autoComplete="email"
+              required
+            />
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="password">Password</Label>
