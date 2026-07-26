@@ -35,9 +35,9 @@ export function RegisterForm() {
               id="email"
               name="email"
               type="email"
-              placeholder="yourname@bmsce.ac.in"
-              pattern=".+@bmsce\.ac\.in"
-              title="Must be a @bmsce.ac.in email address"
+              placeholder="name.sm24@bmsce.ac.in"
+              pattern="[A-Za-z]+(\.[A-Za-z]+)*\.[A-Za-z]{2}[0-9]{2}@bmsce\.ac\.in"
+              title="Format: name.XX##@bmsce.ac.in (e.g. john.sm24@bmsce.ac.in)"
               autoComplete="email"
               required
             />

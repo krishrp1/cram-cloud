@@ -6,10 +6,11 @@ import { SEMESTERS } from "@/lib/constants";
 // only add friction without adding real validation value. Matches the
 // original backend's EMAIL_RE exactly.
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-// Registration is restricted to this college's domain; login isn't
-// (existing accounts, if any predate this restriction, must still be able
-// to sign in — the domain check only gates who can create a new account).
-const ALLOWED_EMAIL_DOMAIN = "@bmsce.ac.in";
+// Registration is restricted to this college's official email format:
+// name.<2-letter dept code><2-digit batch year>@bmsce.ac.in (e.g.
+// john.sm24@bmsce.ac.in). Login isn't restricted — existing accounts, if
+// any predate this, must still be able to sign in regardless of format.
+const BMSCE_EMAIL_RE = /^[a-z]+(\.[a-z]+)*\.[a-z]{2}\d{2}@bmsce\.ac\.in$/;
 const MAX_EMAIL_LENGTH = 254; // RFC 5321 4.5.3.1.3
 const MIN_PASSWORD_LENGTH = 8;
 // bcrypt only reads the first 72 bytes of its input — anything past that
@@ -25,8 +26,8 @@ const email = z
   .regex(EMAIL_RE, "Invalid email address");
 
 const collegeEmail = email.refine(
-  (val) => val.endsWith(ALLOWED_EMAIL_DOMAIN),
-  `Registration is restricted to ${ALLOWED_EMAIL_DOMAIN} email addresses`
+  (val) => BMSCE_EMAIL_RE.test(val),
+  "Must be a valid @bmsce.ac.in email (e.g. name.sm24@bmsce.ac.in)"
 );
 
 const semester = z.enum(SEMESTERS as [string, ...string[]], { error: "Invalid semester" });
