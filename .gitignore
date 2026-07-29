@@ -43,3 +43,8 @@ next-env.d.ts
 
 # prisma generated client (reproduced by `prisma generate`, runs via postinstall)
 /generated/
+
+# local AI assistant tooling state
+.claude/
+.agents/
+skills-lock.json
