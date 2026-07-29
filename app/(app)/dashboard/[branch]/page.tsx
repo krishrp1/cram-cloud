@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChevronLeft } from "lucide-react";
 import { BRANCHES, SEMESTERS, branchLabel } from "@/lib/constants";
 
 export async function generateMetadata({ params }: { params: Promise<{ branch: string }> }) {
@@ -18,11 +19,15 @@ export default async function BranchSemesterPickerPage({ params }: { params: Pro
   return (
     <div className="mx-auto max-w-3xl p-6">
       <div className="mb-6">
-        <Link href="/dashboard" className="text-sm text-muted-foreground hover:underline">
-          ← All departments
+        <Link
+          href="/dashboard"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors"
+        >
+          <ChevronLeft className="size-4" aria-hidden />
+          All departments
         </Link>
-        <h1 className="font-heading mt-1 text-2xl font-bold">{branchLabel(branch)}</h1>
-        <p className="text-sm text-muted-foreground">Choose a semester.</p>
+        <h1 className="font-heading mt-2 text-2xl font-bold">{branchLabel(branch)}</h1>
+        <p className="text-muted-foreground text-sm">Which semester are you looking for?</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -30,7 +35,7 @@ export default async function BranchSemesterPickerPage({ params }: { params: Pro
           <Link
             key={semester}
             href={`/dashboard/${branch}/${encodeURIComponent(semester)}`}
-            className="rounded-lg border bg-muted/30 px-4 py-6 text-center text-sm font-medium transition-colors hover:bg-muted"
+            className="bg-card ring-foreground/10 hover:ring-cta/40 hover:bg-accent rounded-xl px-4 py-6 text-center text-sm font-medium ring-1 transition-colors"
           >
             {semester}
           </Link>

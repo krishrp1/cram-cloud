@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { GraduationCap } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,10 +25,8 @@ export function Navbar({ user }: { user: NavUser }) {
   return (
     <nav className="sticky top-0 z-50 flex h-14 items-center justify-between gap-4 border-b bg-background px-4">
       <div className="flex items-center gap-2">
-        <span aria-hidden className="text-lg">
-          📚
-        </span>
-        <span className="font-heading text-sm font-semibold">Cram Cloud</span>
+        <GraduationCap className="text-cta size-5" aria-hidden />
+        <span className="font-heading text-base font-semibold">Cram Cloud</span>
       </div>
 
       <div className="flex items-center gap-1">

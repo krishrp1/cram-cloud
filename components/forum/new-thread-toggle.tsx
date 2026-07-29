@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { Plus } from "lucide-react";
 import { createThreadAction } from "@/lib/actions/forum";
 import { IDLE_STATE } from "@/lib/action-state";
 import { Button } from "@/components/ui/button";
@@ -15,12 +16,18 @@ export function NewThreadToggle() {
 
   return (
     <div>
-      <Button onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="new-thread-form">
-        + New Thread
+      <Button
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-controls="new-thread-form"
+        className="bg-cta text-cta-foreground hover:bg-cta/90"
+      >
+        <Plus className="size-4" aria-hidden />
+        New Thread
       </Button>
 
       {open && (
-        <div id="new-thread-form" className="mt-4 rounded-lg border bg-muted/30 p-5">
+        <div id="new-thread-form" className="bg-card ring-foreground/10 mt-4 rounded-xl p-5 ring-1">
           <h3 className="mb-3 text-sm font-semibold">Create New Thread</h3>
           {state.status === "error" && (
             <Alert variant="destructive" className="mb-3">

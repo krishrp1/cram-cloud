@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import { FileText } from "lucide-react";
 import { uploadPdfAction } from "@/lib/actions/pdf";
 import { IDLE_STATE } from "@/lib/action-state";
 import { SEMESTERS, DEPARTMENT_GROUPS } from "@/lib/constants";
@@ -139,8 +140,8 @@ export function UploadForm() {
               className="w-full cursor-pointer"
               aria-label="Click to select a PDF file, or drag and drop"
             >
-              <div aria-hidden className="mb-2 text-3xl">
-                📄
+              <div aria-hidden className="text-muted-foreground mb-2 flex justify-center">
+                <FileText className="size-9" />
               </div>
               <p className="mb-2 text-sm">Click to select PDF or drag &amp; drop</p>
               {fileName && <span className="block text-sm font-semibold text-primary">{fileName}</span>}
@@ -148,7 +149,11 @@ export function UploadForm() {
           </div>
         </div>
 
-        <Button type="submit" disabled={pending}>
+        <Button
+          type="submit"
+          disabled={pending}
+          className="bg-cta text-cta-foreground hover:bg-cta/90"
+        >
           {pending ? "Uploading…" : "Upload PDF"}
         </Button>
       </form>

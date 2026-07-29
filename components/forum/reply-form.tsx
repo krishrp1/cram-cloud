@@ -27,7 +27,11 @@ export function ReplyForm({ threadId }: { threadId: number }) {
         Write a reply
       </label>
       <Textarea id="reply-text" name="content" placeholder="Write a reply..." rows={3} required maxLength={10000} />
-      <Button type="submit" disabled={pending} className="self-start">
+      <Button
+        type="submit"
+        disabled={pending}
+        className="bg-cta text-cta-foreground hover:bg-cta/90 self-start"
+      >
         {pending ? "Posting…" : "Reply"}
       </Button>
     </form>

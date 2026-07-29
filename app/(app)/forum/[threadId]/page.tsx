@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChevronLeft, User } from "lucide-react";
 import { requireUser } from "@/lib/auth/dal";
 import { getThreadForUser } from "@/lib/data/forum";
 import { DeleteThreadButton } from "@/components/forum/delete-thread-button";
@@ -21,17 +22,21 @@ export default async function ThreadDetailPage({ params }: { params: Promise<{ t
 
   return (
     <div className="mx-auto max-w-3xl p-6">
-      <Link href="/forum" className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-        ← Back to Forum
+      <Link href="/forum" className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm transition-colors">
+        <ChevronLeft className="size-4" aria-hidden />
+        Back to Forum
       </Link>
 
-      <div className="mb-5 rounded-lg border bg-muted/30 p-5">
+      <div className="bg-card ring-foreground/10 mb-5 rounded-xl p-5 ring-1">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h1 className="font-heading text-xl font-semibold">{thread.title}</h1>
           {canDeleteThread && <DeleteThreadButton threadId={thread.id} />}
         </div>
-        <div className="mb-4 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-          <span>👤 {thread.userName}</span>
+        <div className="text-muted-foreground mb-4 flex flex-wrap items-center gap-4 text-sm">
+          <span className="inline-flex items-center gap-1">
+            <User className="size-3.5" aria-hidden />
+            {thread.userName}
+          </span>
           <span>{formatDate(thread.createdAt)}</span>
         </div>
         <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">{thread.content}</div>

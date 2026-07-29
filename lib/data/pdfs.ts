@@ -29,6 +29,13 @@ export async function listPdfsForBranchSemester(branch: string, semester: string
   return pdfs.map(pdfToDict);
 }
 
+// Note count per branch, for the dashboard's branch cards. Branches with no
+// notes yet simply aren't in the returned map (treat missing as 0).
+export async function countPdfsByBranch(): Promise<Record<string, number>> {
+  const groups = await db.pdf.groupBy({ by: ["branch"], _count: { _all: true } });
+  return Object.fromEntries(groups.map((g) => [g.branch, g._count._all]));
+}
+
 // Admin-only: every PDF across every branch/semester, for the "Manage PDFs" tab.
 export async function listAllPdfs(): Promise<PdfListItem[]> {
   const pdfs = await db.pdf.findMany({

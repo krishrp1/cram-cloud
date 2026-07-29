@@ -68,7 +68,12 @@ export function CommentSection({ pdfId, comments }: { pdfId: number; comments: C
           maxLength={2000}
           className="min-h-10 flex-1 resize-y"
         />
-        <Button type="submit" size="sm" disabled={pending}>
+        <Button
+          type="submit"
+          size="sm"
+          disabled={pending}
+          className="bg-cta text-cta-foreground hover:bg-cta/90"
+        >
           {pending ? "Posting…" : "Post"}
         </Button>
       </form>

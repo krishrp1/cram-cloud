@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { BookOpen } from "lucide-react";
 import { branchLabel } from "@/lib/constants";
 import type { PdfListItem } from "@/lib/data/pdfs";
 import { Input } from "@/components/ui/input";
@@ -34,10 +35,13 @@ export function PdfSidebar({
   }, [pdfs, search]);
 
   return (
-    <aside className="flex h-full flex-col border-r bg-muted/30 md:w-[280px] md:shrink-0" aria-label="Notes list">
+    <aside className="bg-muted/40 flex h-full flex-col border-r md:w-[280px] md:shrink-0" aria-label="Notes list">
       <div className="border-b px-4 py-3">
-        <div className="text-sm font-semibold">📚 {branchLabel(branch)}</div>
-        <div className="text-xs text-muted-foreground">{semester}</div>
+        <div className="flex items-center gap-1.5 text-sm font-semibold">
+          <BookOpen className="text-cta size-4" aria-hidden />
+          {branchLabel(branch)}
+        </div>
+        <div className="text-muted-foreground text-xs">{semester}</div>
         <div className="mt-2 flex gap-3 text-xs">
           <Link href="/dashboard" className="text-muted-foreground hover:underline">
             Departments

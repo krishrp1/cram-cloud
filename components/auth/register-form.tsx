@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
+import { GraduationCap } from "lucide-react";
 import { registerAction } from "@/lib/actions/auth";
 import { IDLE_STATE } from "@/lib/action-state";
 import { SEMESTERS } from "@/lib/constants";
@@ -18,8 +19,10 @@ export function RegisterForm() {
   return (
     <Card>
       <CardHeader className="text-center">
-        <div className="text-3xl">📚</div>
-        <CardTitle className="text-xl">Create your account</CardTitle>
+        <div className="bg-accent mx-auto mb-1 flex size-12 items-center justify-center rounded-full">
+          <GraduationCap className="text-accent-foreground size-6" aria-hidden />
+        </div>
+        <CardTitle className="font-heading text-2xl">Create your account</CardTitle>
         <CardDescription>Join your semester&apos;s notes &amp; discussions</CardDescription>
       </CardHeader>
       <CardContent>
@@ -69,7 +72,11 @@ export function RegisterForm() {
               </SelectContent>
             </Select>
           </div>
-          <Button type="submit" disabled={pending} className="w-full">
+          <Button
+            type="submit"
+            disabled={pending}
+            className="bg-cta text-cta-foreground hover:bg-cta/90 w-full"
+          >
             {pending ? "Creating account…" : "Create Account"}
           </Button>
         </form>

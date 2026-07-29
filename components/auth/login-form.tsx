@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
+import { GraduationCap } from "lucide-react";
 import { loginAction } from "@/lib/actions/auth";
 import { IDLE_STATE } from "@/lib/action-state";
 import { Button } from "@/components/ui/button";
@@ -16,9 +17,11 @@ export function LoginForm({ justRegistered }: { justRegistered: boolean }) {
   return (
     <Card>
       <CardHeader className="text-center">
-        <div className="text-3xl">📚</div>
-        <CardTitle className="text-xl">Welcome back</CardTitle>
-        <CardDescription>Sign in to access your course notes</CardDescription>
+        <div className="bg-accent mx-auto mb-1 flex size-12 items-center justify-center rounded-full">
+          <GraduationCap className="text-accent-foreground size-6" aria-hidden />
+        </div>
+        <CardTitle className="font-heading text-2xl">Welcome back</CardTitle>
+        <CardDescription>Sign in to pick up right where you left off</CardDescription>
       </CardHeader>
       <CardContent>
         {justRegistered && state.status === "idle" && (
@@ -40,7 +43,11 @@ export function LoginForm({ justRegistered }: { justRegistered: boolean }) {
             <Label htmlFor="password">Password</Label>
             <Input id="password" name="password" type="password" placeholder="••••••••" autoComplete="current-password" required />
           </div>
-          <Button type="submit" disabled={pending} className="w-full">
+          <Button
+            type="submit"
+            disabled={pending}
+            className="bg-cta text-cta-foreground hover:bg-cta/90 w-full"
+          >
             {pending ? "Signing in…" : "Sign In"}
           </Button>
         </form>
