@@ -28,7 +28,6 @@ function replyToDict(r: ForumReply & { user: User }) {
   };
 }
 
-export type ThreadListItem = ReturnType<typeof threadToDict>;
 export type ReplyItem = ReturnType<typeof replyToDict>;
 
 // Forum threads are scoped to the viewer's own semester — including for
