@@ -7,6 +7,7 @@ import { db } from "@/lib/prisma";
 import { uploadPdf, deletePdf } from "@/lib/storage";
 import { parseId } from "@/lib/parseId";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { logAdminAction } from "@/lib/audit";
 import { uploadPdfSchema } from "@/lib/validations/pdf";
 import { Prisma } from "@/generated/prisma/client";
 import type { ActionState } from "@/lib/action-state";
@@ -63,13 +64,14 @@ export async function uploadPdfAction(_prevState: ActionState, formData: FormDat
     data: { fileUrl: `/api/pdf/${created.id}/file` },
   });
 
+  logAdminAction(admin, "pdf.upload", created.id, title);
   revalidatePath("/admin");
   revalidatePath(`/dashboard/${branch}/${encodeURIComponent(semester)}`);
   return { status: "success" };
 }
 
 export async function deletePdfAction(rawId: string): Promise<ActionState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
 
   const id = parseId(rawId);
   if (id === null) return { status: "error", message: "Not found" };
@@ -102,6 +104,7 @@ export async function deletePdfAction(rawId: string): Promise<ActionState> {
     throw err;
   }
 
+  logAdminAction(admin, "pdf.delete", pdf.id, pdf.title);
   revalidatePath("/admin");
   revalidatePath(`/dashboard/${pdf.branch}/${encodeURIComponent(pdf.semester)}`);
   return { status: "success" };

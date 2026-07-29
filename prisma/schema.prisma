@@ -95,3 +95,19 @@ model RateLimitHit {
   @@index([key, createdAt])
   @@map("rate_limit_hits")
 }
+
+// No FK to User — the log must survive the admin account it recorded being
+// deleted later, so the actor's email is captured as a snapshot at write
+// time rather than joined live.
+model AdminAction {
+  id         Int      @id @default(autoincrement())
+  adminId    Int      @map("admin_id")
+  adminEmail String   @map("admin_email")
+  action     String
+  targetId   Int?     @map("target_id")
+  detail     String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("admin_actions")
+}
