@@ -33,8 +33,15 @@ export function ReplyItem({
   const isOwner = reply.userId === currentUserId;
   const canDelete = isOwner || isAdmin;
 
-  if (state.status === "success" && editing) {
-    setEditing(false);
+  // "Adjusting state during render" rather than in an effect (see
+  // https://react.dev/learn/you-might-not-need-an-effect) — closes the edit
+  // form the instant a success is observed, without the extra render +
+  // cascading-setState-in-effect the lint rule flags. Same pattern as
+  // components/admin/upload-form.tsx.
+  const [lastHandledState, setLastHandledState] = useState(state);
+  if (state !== lastHandledState) {
+    setLastHandledState(state);
+    if (state.status === "success") setEditing(false);
   }
 
   return (
