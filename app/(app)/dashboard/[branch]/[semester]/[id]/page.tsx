@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getPdfById } from "@/lib/data/pdfs";
 import { listCommentsForPdf } from "@/lib/data/comments";
+import { parseId } from "@/lib/parseId";
 import { CommentSection } from "@/components/dashboard/comment-section";
 
 function formatDate(iso: string) {
@@ -16,10 +17,15 @@ export default async function PdfDetailPage({
   // Route params arrive percent-encoded as-is in this Next.js version.
   const branch = decodeURIComponent(raw.branch);
   const semester = decodeURIComponent(raw.semester);
-  const pdf = await getPdfById(raw.id);
+  // Comments only need the numeric id (derivable synchronously from the
+  // route param), not the resolved pdf row, so the two queries can run
+  // concurrently instead of comments waiting on the pdf fetch to finish.
+  const id = parseId(raw.id);
+  const [pdf, comments] = await Promise.all([
+    getPdfById(raw.id),
+    id === null ? Promise.resolve([]) : listCommentsForPdf(id),
+  ]);
   if (!pdf || pdf.branch !== branch || pdf.semester !== semester) notFound();
-
-  const comments = await listCommentsForPdf(pdf.id);
   const fileUrl = `/api/pdf/${pdf.id}/file`;
 
   return (

@@ -37,12 +37,26 @@ export async function countPdfsByBranch(): Promise<Record<string, number>> {
 }
 
 // Admin-only: every PDF across every branch/semester, for the "Manage PDFs" tab.
-export async function listAllPdfs(): Promise<PdfListItem[]> {
-  const pdfs = await db.pdf.findMany({
-    include: { uploader: true },
-    orderBy: { uploadDate: "desc" },
-  });
-  return pdfs.map(pdfToDict);
+export async function listAllPdfs(page: number, perPage: number) {
+  const safePage = Math.max(page || 1, 1);
+  const safePerPage = Math.min(Math.max(perPage || 20, 1), 100);
+
+  const [pdfs, total] = await Promise.all([
+    db.pdf.findMany({
+      include: { uploader: true },
+      orderBy: { uploadDate: "desc" },
+      skip: (safePage - 1) * safePerPage,
+      take: safePerPage,
+    }),
+    db.pdf.count(),
+  ]);
+
+  return {
+    pdfs: pdfs.map(pdfToDict),
+    total,
+    pages: Math.ceil(total / safePerPage) || 1,
+    currentPage: safePage,
+  };
 }
 
 export async function getPdfById(rawId: string) {
