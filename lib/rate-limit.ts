@@ -40,13 +40,15 @@ export async function checkRateLimit(
     // shouldn't crash just because the limiter couldn't run, and "briefly
     // unavailable" is the safe default for a rate limiter.
     return false;
-  } finally {
-    // Opportunistically prune old rows so the table doesn't grow unbounded.
-    // Fire-and-forget, but never unhandled — a rejection here must not
-    // become an unhandled promise rejection and crash the process.
-    if (Math.random() < 0.02) {
-      const cutoff = new Date(Date.now() - 60 * 60 * 1000);
-      db.rateLimitHit.deleteMany({ where: { createdAt: { lt: cutoff } } }).catch(() => {});
-    }
   }
+}
+
+// Old rows don't affect correctness (checkRateLimit only ever counts within
+// the last windowMs), just table size — pruned on a schedule by
+// app/api/cron/prune-rate-limits/route.ts rather than opportunistically on
+// every call, so cleanup isn't left to chance under low traffic.
+export async function pruneRateLimitHits(): Promise<number> {
+  const cutoff = new Date(Date.now() - 60 * 60 * 1000);
+  const { count } = await db.rateLimitHit.deleteMany({ where: { createdAt: { lt: cutoff } } });
+  return count;
 }
