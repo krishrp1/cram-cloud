@@ -19,7 +19,7 @@ const DUMMY_HASH = "$2b$12$C6UzMDM.H6dfI/f/IKcEeOxRp.PkT7wJI4TnP1zlt/dGZmzB1XZm.
 
 export async function registerAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   const ip = await getRequestIp();
-  if (!checkRateLimit(`register:${ip}`, 10, 60 * 60 * 1000)) {
+  if (!(await checkRateLimit(`register:${ip}`, 10, 60 * 60 * 1000))) {
     return { status: "error", message: "Too many requests, please try again later" };
   }
 
@@ -55,7 +55,7 @@ export async function registerAction(_prevState: ActionState, formData: FormData
 
 export async function loginAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   const ip = await getRequestIp();
-  if (!checkRateLimit(`login:${ip}`, 10, 60 * 1000)) {
+  if (!(await checkRateLimit(`login:${ip}`, 10, 60 * 1000))) {
     return { status: "error", message: "Too many requests, please try again later" };
   }
 

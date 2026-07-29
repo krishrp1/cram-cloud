@@ -20,7 +20,7 @@ function secureFilename(filename: string) {
 export async function uploadPdfAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   const admin = await requireAdmin();
 
-  if (!checkRateLimit(`upload:${admin.id}`, 20, 60 * 60 * 1000)) {
+  if (!(await checkRateLimit(`upload:${admin.id}`, 20, 60 * 60 * 1000))) {
     return { status: "error", message: "Too many requests, please try again later" };
   }
 

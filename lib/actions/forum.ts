@@ -22,7 +22,7 @@ async function getAuthorizedThread(rawId: string, user: User) {
 export async function createThreadAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   const user = await requireUser();
 
-  if (!checkRateLimit(`thread:${user.id}`, 10, 60 * 60 * 1000)) {
+  if (!(await checkRateLimit(`thread:${user.id}`, 10, 60 * 60 * 1000))) {
     return { status: "error", message: "Too many requests, please try again later" };
   }
 
@@ -66,7 +66,7 @@ export async function deleteThreadAction(rawId: string): Promise<ActionState> {
 export async function postReplyAction(rawThreadId: string, _prevState: ActionState, formData: FormData): Promise<ActionState> {
   const user = await requireUser();
 
-  if (!checkRateLimit(`reply:${user.id}`, 30, 60 * 1000)) {
+  if (!(await checkRateLimit(`reply:${user.id}`, 30, 60 * 1000))) {
     return { status: "error", message: "Too many requests, please slow down" };
   }
 

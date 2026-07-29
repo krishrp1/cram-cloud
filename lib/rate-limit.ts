@@ -1,37 +1,52 @@
 import "server-only";
+import { db } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 
-// In-memory, per-instance, best-effort limiter — not distributed across
-// serverless invocations, same actual protection level the original
-// express-rate-limit setup had once deployed (that was also in-memory per
-// process). Good enough to blunt casual brute-forcing without adding new
-// infra (e.g. a Redis/KV store) for this app's scale.
-const hits = new Map<string, number[]>();
+/**
+ * Sliding-window rate limiter backed by Postgres — this app already runs
+ * on Supabase Postgres via Prisma, so a rate_limit_hits table gives
+ * durable, cross-instance limiting (unlike a per-process in-memory Map)
+ * without adding a new service.
+ *
+ * Count-then-insert runs in a Serializable transaction so two concurrent
+ * requests can't both read the same under-limit count and both insert,
+ * which would let the limit be exceeded (a real risk for brute-forcing
+ * login with a handful of parallel requests). Postgres aborts one side of
+ * any conflicting pair with a serialization failure; that side fails
+ * closed (treated as rate-limited) rather than retrying.
+ */
+export async function checkRateLimit(
+  key: string,
+  max: number,
+  windowMs: number,
+): Promise<boolean> {
+  const windowStart = new Date(Date.now() - windowMs);
 
-// Periodically drop stale entries so the map doesn't grow unbounded across
-// a long-lived warm instance.
-function prune(now: number) {
-  for (const [key, timestamps] of hits) {
-    const recent = timestamps.filter((t) => now - t < 60 * 60 * 1000);
-    if (recent.length === 0) hits.delete(key);
-    else hits.set(key, recent);
-  }
-}
-
-let lastPrune = 0;
-
-export function checkRateLimit(key: string, max: number, windowMs: number): boolean {
-  const now = Date.now();
-  if (now - lastPrune > 5 * 60 * 1000) {
-    prune(now);
-    lastPrune = now;
-  }
-
-  const timestamps = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
-  if (timestamps.length >= max) {
-    hits.set(key, timestamps);
+  try {
+    return await db.$transaction(
+      async (tx) => {
+        const count = await tx.rateLimitHit.count({
+          where: { key, createdAt: { gte: windowStart } },
+        });
+        if (count >= max) return false;
+        await tx.rateLimitHit.create({ data: { key } });
+        return true;
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  } catch {
+    // Any DB error here (serialization conflict, pool exhaustion, transient
+    // outage) fails closed rather than re-throwing — the caller's request
+    // shouldn't crash just because the limiter couldn't run, and "briefly
+    // unavailable" is the safe default for a rate limiter.
     return false;
+  } finally {
+    // Opportunistically prune old rows so the table doesn't grow unbounded.
+    // Fire-and-forget, but never unhandled — a rejection here must not
+    // become an unhandled promise rejection and crash the process.
+    if (Math.random() < 0.02) {
+      const cutoff = new Date(Date.now() - 60 * 60 * 1000);
+      db.rateLimitHit.deleteMany({ where: { createdAt: { lt: cutoff } } }).catch(() => {});
+    }
   }
-  timestamps.push(now);
-  hits.set(key, timestamps);
-  return true;
 }

@@ -11,7 +11,7 @@ import type { ActionState } from "@/lib/action-state";
 export async function postCommentAction(rawPdfId: string, _prevState: ActionState, formData: FormData): Promise<ActionState> {
   const user = await requireUser();
 
-  if (!checkRateLimit(`comment:${user.id}`, 30, 60 * 1000)) {
+  if (!(await checkRateLimit(`comment:${user.id}`, 30, 60 * 1000))) {
     return { status: "error", message: "Too many requests, please slow down" };
   }
 

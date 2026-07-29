@@ -19,7 +19,6 @@ model User {
   role         Role     @default(student)
   semester     String
   createdAt    DateTime @default(now()) @map("created_at")
-  sessionInvalidatedAt DateTime @default(now()) @map("session_invalidated_at")
 
   pdfs     Pdf[]
   comments Comment[]
@@ -86,4 +85,13 @@ model ForumReply {
 
   @@index([threadId])
   @@map("forum_replies")
+}
+
+model RateLimitHit {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([key, createdAt])
+  @@map("rate_limit_hits")
 }
